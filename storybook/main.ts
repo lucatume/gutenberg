@@ -1,3 +1,5 @@
+import { dirname } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import {
 	type InlineConfig,
 	type PluginOption,
@@ -8,6 +10,15 @@ import react from '@vitejs/plugin-react';
 import type { StorybookConfig } from '@storybook/react-vite';
 import dsTokenFallbacks from '@wordpress/theme/postcss-plugins/postcss-ds-token-fallbacks';
 import dsTokenFallbacksJs from '@wordpress/theme/vite-plugins/vite-ds-token-fallbacks';
+
+/**
+ * @see https://storybook.js.org/docs/faq#how-do-i-fix-module-resolution-in-special-environments
+ */
+function getAbsolutePath( packageName: string ) {
+	return dirname(
+		fileURLToPath( import.meta.resolve( `${ packageName }/package.json` ) )
+	);
+}
 
 const { NODE_ENV = 'development' } = process.env;
 
@@ -46,15 +57,15 @@ const config: StorybookConfig = {
 	staticDirs: [ './static' ],
 	addons: [
 		{
-			name: '@storybook/addon-docs',
+			name: getAbsolutePath( '@storybook/addon-docs' ),
 			options: { configureJSX: true },
 		},
-		'@storybook/addon-a11y',
+		getAbsolutePath( '@storybook/addon-a11y' ),
 		import.meta.resolve( './addons/source-link/preset.ts' ),
-		'storybook-addon-tag-badges',
+		getAbsolutePath( 'storybook-addon-tag-badges' ),
 		import.meta.resolve( './addons/design-system-theme/preset.ts' ),
 	],
-	framework: '@storybook/react-vite',
+	framework: getAbsolutePath( '@storybook/react-vite' ),
 	features: {
 		experimentalComponentsManifest: NODE_ENV === 'production',
 	},
@@ -83,6 +94,30 @@ const config: StorybookConfig = {
 	viteFinal: async ( viteConfig ) => {
 		return mergeConfig( viteConfig, {
 			plugins: [
+				/*
+				 * Resolve `storybook` and `@storybook/*` bare specifiers from this file's location
+				 * so the Vite preview bundler finds them relative to this config file.
+				 */
+				{
+					name: 'resolve-storybook-from-config',
+					enforce: 'pre',
+					resolveId( id: string ) {
+						if (
+							id === 'storybook' ||
+							id.startsWith( 'storybook/' ) ||
+							id.startsWith( '@storybook/' )
+						) {
+							try {
+								return fileURLToPath(
+									import.meta.resolve( id )
+								);
+							} catch {
+								return null;
+							}
+						}
+						return null;
+					},
+				},
 				dsTokenFallbacksJs(),
 				react( {
 					jsxImportSource: '@emotion/react',

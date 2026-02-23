@@ -53,6 +53,10 @@
 		"@wordpress/ui": "file:../ui",
 		"clsx": "^2.1.1"
 	},
+	"devDependencies": {
+		"@storybook/react-vite": "^10.2.8",
+		"@wordpress/icons": "file:../icons"
+	},
 	"peerDependencies": {
 		"react": "^18.0.0"
 	},
