@@ -19,6 +19,11 @@ import {
 	DimensionsPanel as StylesDimensionsPanel,
 	useHasDimensionsPanel,
 } from '../components/global-styles';
+import {
+	InheritedValueProvider,
+	useInheritedValue,
+	useOwnVariation,
+} from '../components/global-styles/inherited-value-context';
 import { MarginVisualizer, PaddingVisualizer } from './spacing-visualizer';
 import { store as blockEditorStore } from '../store';
 import { unlock } from '../lock-unlock';
@@ -70,17 +75,23 @@ function DimensionsInspectorControl( { children, resetAllFilter } ) {
 
 export function DimensionsPanel( { clientId, name, setAttributes, settings } ) {
 	const isEnabled = useHasDimensionsPanel( settings );
-	const value = useSelect(
+	const { value, className } = useSelect(
 		( select ) => {
 			// Early return to avoid subscription when disabled
 			if ( ! isEnabled ) {
-				return undefined;
+				return {};
 			}
-			return select( blockEditorStore ).getBlockAttributes( clientId )
-				?.style;
+			const attributes =
+				select( blockEditorStore ).getBlockAttributes( clientId ) || {};
+			return {
+				value: attributes.style,
+				className: attributes.className,
+			};
 		},
 		[ clientId, isEnabled ]
 	);
+
+	const ownVariation = useOwnVariation( name, className );
 
 	const [ visualizedProperty, setVisualizedProperty ] = useVisualizer();
 	const onChange = ( newStyle ) => {
@@ -112,15 +123,20 @@ export function DimensionsPanel( { clientId, name, setAttributes, settings } ) {
 
 	return (
 		<>
-			<StylesDimensionsPanel
-				as={ DimensionsInspectorControl }
-				panelId={ clientId }
-				settings={ settings }
-				value={ value }
-				onChange={ onChange }
-				defaultControls={ defaultControls }
-				onVisualize={ setVisualizedProperty }
-			/>
+			<InheritedValueProvider
+				blockName={ name }
+				ownVariation={ ownVariation }
+			>
+				<DimensionsPanelWithInheritedValue
+					as={ DimensionsInspectorControl }
+					panelId={ clientId }
+					settings={ settings }
+					value={ value }
+					onChange={ onChange }
+					defaultControls={ defaultControls }
+					onVisualize={ setVisualizedProperty }
+				/>
+			</InheritedValueProvider>
 			{ !! settings?.spacing?.padding &&
 				visualizedProperty === 'padding' && (
 					<PaddingVisualizer
@@ -138,6 +154,21 @@ export function DimensionsPanel( { clientId, name, setAttributes, settings } ) {
 					/>
 				) }
 		</>
+	);
+}
+
+/**
+ * Internal bridge: consumes `InheritedValueContext` and threads the
+ * merged placeholder payload into the shared global-styles dimensions
+ * panel. Kept as a sibling component so the hook call sits strictly
+ * below the Provider, as required by React's context rules.
+ *
+ * @param {Object} props Passthrough props for `StylesDimensionsPanel`.
+ */
+function DimensionsPanelWithInheritedValue( props ) {
+	const inheritedValue = useInheritedValue();
+	return (
+		<StylesDimensionsPanel { ...props } inheritedValue={ inheritedValue } />
 	);
 }
 

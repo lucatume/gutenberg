@@ -13,6 +13,11 @@ import {
 	default as StylesTypographyPanel,
 	useHasTypographyPanel,
 } from '../components/global-styles/typography-panel';
+import {
+	InheritedValueProvider,
+	useInheritedValue,
+	useOwnVariation,
+} from '../components/global-styles/inherited-value-context';
 
 import { LINE_HEIGHT_SUPPORT_KEY } from './line-height';
 import { FONT_FAMILY_SUPPORT_KEY } from './font-family';
@@ -119,7 +124,7 @@ function TypographyInspectorControl( { children, resetAllFilter } ) {
 export function TypographyPanel( { clientId, name, setAttributes, settings } ) {
 	const isEnabled = useHasTypographyPanel( settings );
 
-	const { style, fontFamily, fontSize, fitText } = useSelect(
+	const { style, fontFamily, fontSize, fitText, className } = useSelect(
 		( select ) => {
 			// Early return to avoid subscription when disabled.
 			if ( ! isEnabled ) {
@@ -130,12 +135,14 @@ export function TypographyPanel( { clientId, name, setAttributes, settings } ) {
 				fontFamily: _fontFamily,
 				fontSize: _fontSize,
 				fitText: _fitText,
+				className: _className,
 			} = select( blockEditorStore ).getBlockAttributes( clientId ) || {};
 			return {
 				style: _style,
 				fontFamily: _fontFamily,
 				fontSize: _fontSize,
 				fitText: _fitText,
+				className: _className,
 			};
 		},
 		[ clientId, isEnabled ]
@@ -144,6 +151,8 @@ export function TypographyPanel( { clientId, name, setAttributes, settings } ) {
 		() => attributesToStyle( { style, fontFamily, fontSize } ),
 		[ style, fontSize, fontFamily ]
 	);
+
+	const ownVariation = useOwnVariation( name, className );
 
 	const onChange = ( newStyle ) => {
 		const newAttributes = styleToAttributes( newStyle );
@@ -168,14 +177,34 @@ export function TypographyPanel( { clientId, name, setAttributes, settings } ) {
 	] );
 
 	return (
-		<StylesTypographyPanel
-			as={ TypographyInspectorControl }
-			panelId={ clientId }
-			settings={ settings }
-			value={ value }
-			onChange={ onChange }
-			defaultControls={ defaultControls }
-		/>
+		<InheritedValueProvider
+			blockName={ name }
+			ownVariation={ ownVariation }
+		>
+			<TypographyPanelWithInheritedValue
+				as={ TypographyInspectorControl }
+				panelId={ clientId }
+				settings={ settings }
+				value={ value }
+				onChange={ onChange }
+				defaultControls={ defaultControls }
+			/>
+		</InheritedValueProvider>
+	);
+}
+
+/**
+ * Internal bridge: consumes `InheritedValueContext` and threads the
+ * merged placeholder payload into the shared global-styles panel. Kept
+ * as a sibling component so the hook call sits strictly below the
+ * Provider, as required by React's context rules.
+ *
+ * @param {Object} props Passthrough props for `StylesTypographyPanel`.
+ */
+function TypographyPanelWithInheritedValue( props ) {
+	const inheritedValue = useInheritedValue();
+	return (
+		<StylesTypographyPanel { ...props } inheritedValue={ inheritedValue } />
 	);
 }
 

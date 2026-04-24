@@ -164,6 +164,8 @@ const renderToggle = ( duotone, resetDuotone ) =>
 		);
 	};
 
+/** @typedef {import('./types').InheritedValue} InheritedValue */
+
 export default function FiltersPanel( {
 	as: Wrapper = FiltersToolsPanel,
 	value,

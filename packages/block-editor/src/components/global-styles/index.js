@@ -24,3 +24,13 @@ export {
 	useHasBackgroundPanel,
 } from './background-panel';
 export { default as StateControl } from './state-control';
+export {
+	buildInheritedValue,
+	buildInheritedValueMemoized,
+} from './build-inherited-value';
+export {
+	InheritedValueContext,
+	InheritedValueProvider,
+	useInheritedValue,
+	useOwnVariation,
+} from './inherited-value-context';

@@ -31,6 +31,11 @@ import {
 	useHasColorPanel,
 	default as StylesColorPanel,
 } from '../components/global-styles/color-panel';
+import {
+	InheritedValueProvider,
+	useInheritedValue,
+	useOwnVariation,
+} from '../components/global-styles/inherited-value-context';
 import BlockColorContrastChecker from './contrast-checker';
 import { store as blockEditorStore } from '../store';
 
@@ -271,27 +276,31 @@ export function ColorEdit( {
 } ) {
 	const isEnabled = useHasColorPanel( settings );
 
-	const { style, textColor, backgroundColor, gradient } = useSelect(
-		( select ) => {
-			// Early return to avoid subscription when disabled
-			if ( ! isEnabled ) {
-				return {};
-			}
-			const {
-				style: _style,
-				textColor: _textColor,
-				backgroundColor: _backgroundColor,
-				gradient: _gradient,
-			} = select( blockEditorStore ).getBlockAttributes( clientId ) || {};
-			return {
-				style: _style,
-				textColor: _textColor,
-				backgroundColor: _backgroundColor,
-				gradient: _gradient,
-			};
-		},
-		[ clientId, isEnabled ]
-	);
+	const { style, textColor, backgroundColor, gradient, className } =
+		useSelect(
+			( select ) => {
+				// Early return to avoid subscription when disabled
+				if ( ! isEnabled ) {
+					return {};
+				}
+				const {
+					style: _style,
+					textColor: _textColor,
+					backgroundColor: _backgroundColor,
+					gradient: _gradient,
+					className: _className,
+				} = select( blockEditorStore ).getBlockAttributes( clientId ) ||
+				{};
+				return {
+					style: _style,
+					textColor: _textColor,
+					backgroundColor: _backgroundColor,
+					gradient: _gradient,
+					className: _className,
+				};
+			},
+			[ clientId, isEnabled ]
+		);
 	const value = useMemo( () => {
 		return attributesToStyle( {
 			style,
@@ -300,6 +309,8 @@ export function ColorEdit( {
 			gradient,
 		} );
 	}, [ style, textColor, backgroundColor, gradient ] );
+
+	const ownVariation = useOwnVariation( name, className );
 
 	const onChange = ( newStyle ) => {
 		setAttributes( styleToAttributes( newStyle ) );
@@ -333,28 +344,51 @@ export function ColorEdit( {
 	const Wrapper = asWrapper || ColorInspectorControl;
 
 	return (
-		<StylesColorPanel
-			as={ Wrapper }
-			panelId={ clientId }
-			settings={ settings }
-			value={ value }
-			onChange={ onChange }
-			defaultControls={ defaultControls }
-			label={ label }
-			enableContrastChecker={
-				false !==
-				getBlockSupport( name, [
-					COLOR_SUPPORT_KEY,
-					'enableContrastChecker',
-				] )
-			}
+		<InheritedValueProvider
+			blockName={ name }
+			ownVariation={ ownVariation }
 		>
-			{ enableContrastChecking && (
-				<BlockColorContrastChecker
-					clientId={ clientId }
-					name={ name }
-				/>
-			) }
+			<ColorPanelWithInheritedValue
+				as={ Wrapper }
+				panelId={ clientId }
+				settings={ settings }
+				value={ value }
+				onChange={ onChange }
+				defaultControls={ defaultControls }
+				label={ label }
+				enableContrastChecker={
+					false !==
+					getBlockSupport( name, [
+						COLOR_SUPPORT_KEY,
+						'enableContrastChecker',
+					] )
+				}
+			>
+				{ enableContrastChecking && (
+					<BlockColorContrastChecker
+						clientId={ clientId }
+						name={ name }
+					/>
+				) }
+			</ColorPanelWithInheritedValue>
+		</InheritedValueProvider>
+	);
+}
+
+/**
+ * Internal bridge: consumes `InheritedValueContext` and threads the
+ * merged placeholder payload into the shared global-styles color panel.
+ * Kept as a sibling component so the hook call sits strictly below the
+ * Provider, as required by React's context rules.
+ *
+ * @param {Object} props          Passthrough props for `StylesColorPanel`.
+ * @param {*}      props.children Child color-control nodes.
+ */
+function ColorPanelWithInheritedValue( { children, ...rest } ) {
+	const inheritedValue = useInheritedValue();
+	return (
+		<StylesColorPanel { ...rest } inheritedValue={ inheritedValue }>
+			{ children }
 		</StylesColorPanel>
 	);
 }

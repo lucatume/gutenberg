@@ -124,6 +124,8 @@ function BackgroundToolsPanel( {
 	);
 }
 
+/** @typedef {import('./types').InheritedValue} InheritedValue */
+
 export default function BackgroundImagePanel( {
 	as: Wrapper = BackgroundToolsPanel,
 	value,

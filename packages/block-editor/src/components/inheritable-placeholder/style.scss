@@ -1,0 +1,60 @@
+@use "@wordpress/base-styles/colors" as *;
+@use "@wordpress/base-styles/variables" as *;
+
+/**
+ * MVP visual treatment for Global Styles inherited-value placeholders.
+ *
+ * Source of truth for the rules below:
+ *   plans/2026-04-20-reflect-global-styles-in-block-inspector/06b-visual-treatment.md
+ *
+ * Phase 1 covers controls with a native `placeholder` slot
+ * (text/number/unit inputs). Non-input controls (toggles, swatches,
+ * ranges, ToggleGroup-based selects) are deferred to follow-ups per
+ * the 2026-04-25 simplification.
+ *
+ * `--wp-block-synced-color` is defined in
+ * `packages/base-styles/_default-custom-properties.scss`.
+ */
+
+// Visually-hidden description element. Mirrors the WordPress
+// `screen-reader-text` pattern so screen readers announce the
+// description while sighted users see no visual change.
+.block-editor-inherited-value-description {
+	border: 0;
+	clip: rect(1px, 1px, 1px, 1px);
+	-webkit-clip-path: inset(50%);
+	clip-path: inset(50%);
+	height: 1px;
+	margin: -1px;
+	overflow: hidden;
+	padding: 0;
+	position: absolute;
+	width: 1px;
+	word-wrap: normal !important;
+}
+
+// Placeholder visual treatment for native input controls.
+//
+// Applied via `is-inherited-placeholder` on the input itself or on a
+// wrapper that contains an input. The descendant rule covers wrapper
+// usage so callers can place the class on whichever element is most
+// natural for their control.
+//
+// Native HTML `placeholder` text is the only thing styled here in
+// Phase 1 — the inherited value reaches the user via the input's
+// `placeholder` attribute, set by the consuming panel. Italic +
+// synced-purple distinguishes inherited placeholder text from a
+// regular empty-input hint.
+.is-inherited-placeholder {
+	&::placeholder {
+		color: var(--wp-block-synced-color);
+		font-style: italic;
+		opacity: 1;
+	}
+
+	input::placeholder {
+		color: var(--wp-block-synced-color);
+		font-style: italic;
+		opacity: 1;
+	}
+}

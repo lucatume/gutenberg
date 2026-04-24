@@ -318,6 +318,8 @@ export function ColorPanelDropdown( {
 	);
 }
 
+/** @typedef {import('./types').InheritedValue} InheritedValue */
+
 export default function ColorPanel( {
 	as: Wrapper = ColorToolsPanel,
 	value,

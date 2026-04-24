@@ -33,6 +33,8 @@ import {
 } from './typography-utils';
 import { getFontStylesAndWeights } from '../../utils/get-font-styles-and-weights';
 
+/** @typedef {import('./types').InheritedValue} InheritedValue */
+
 const MIN_TEXT_COLUMNS = 1;
 const MAX_TEXT_COLUMNS = 6;
 
@@ -181,6 +183,8 @@ const DEFAULT_CONTROLS = {
 	writingMode: true,
 	textColumns: true,
 };
+
+/** @typedef {import('./types').InheritedValue} InheritedValue */
 
 export default function TypographyPanel( {
 	as: Wrapper = TypographyToolsPanel,

@@ -94,6 +94,8 @@ const DEFAULT_CONTROLS = {
 	shadow: true,
 };
 
+/** @typedef {import('./types').InheritedValue} InheritedValue */
+
 export default function BorderPanel( {
 	as: Wrapper = BorderToolsPanel,
 	value,

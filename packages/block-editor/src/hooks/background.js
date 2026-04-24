@@ -22,7 +22,11 @@ import {
 	hasBackgroundImageValue,
 	hasBackgroundGradientValue,
 } from '../components/global-styles/background-panel';
-import { globalStylesDataKey } from '../store/private-keys';
+import {
+	InheritedValueProvider,
+	useInheritedValue,
+	useOwnVariation,
+} from '../components/global-styles/inherited-value-context';
 
 export const BACKGROUND_SUPPORT_KEY = 'background';
 
@@ -164,28 +168,19 @@ export function BackgroundImagePanel( {
 	setAttributes,
 	settings,
 } ) {
-	const { style, className, inheritedValue } = useSelect(
+	const { style, className } = useSelect(
 		( select ) => {
-			const { getBlockAttributes, getSettings } =
-				select( blockEditorStore );
-			const _settings = getSettings();
+			const { getBlockAttributes } = select( blockEditorStore );
 			const blockAttributes = getBlockAttributes( clientId );
 			return {
 				style: blockAttributes?.style,
 				className: blockAttributes?.className,
-				/*
-				 * To ensure we pass down the right inherited values:
-				 * @TODO 1. Pass inherited value down to all block style controls,
-				 *   See: packages/block-editor/src/hooks/style.js
-				 * @TODO 2. Add support for block style variations,
-				 *   See implementation: packages/block-editor/src/hooks/block-style-variation.js
-				 */
-				inheritedValue:
-					_settings[ globalStylesDataKey ]?.blocks?.[ name ],
 			};
 		},
-		[ clientId, name ]
+		[ clientId ]
 	);
+
+	const ownVariation = useOwnVariation( name, className );
 
 	const backgroundGradientSupported = hasBackgroundSupport(
 		name,
@@ -284,16 +279,35 @@ export function BackgroundImagePanel( {
 	] );
 
 	return (
-		<StylesBackgroundPanel
-			inheritedValue={ inheritedValue }
-			as={ as }
-			panelId={ clientId }
-			defaultValues={ BACKGROUND_BLOCK_DEFAULT_VALUES }
-			settings={ updatedSettings }
-			onChange={ onChange }
-			defaultControls={ defaultControls }
-			value={ styleValue }
-		/>
+		<InheritedValueProvider
+			blockName={ name }
+			ownVariation={ ownVariation }
+		>
+			<BackgroundPanelWithInheritedValue
+				as={ as }
+				panelId={ clientId }
+				defaultValues={ BACKGROUND_BLOCK_DEFAULT_VALUES }
+				settings={ updatedSettings }
+				onChange={ onChange }
+				defaultControls={ defaultControls }
+				value={ styleValue }
+			/>
+		</InheritedValueProvider>
+	);
+}
+
+/**
+ * Internal bridge: consumes `InheritedValueContext` and threads the
+ * merged placeholder payload into the shared global-styles background
+ * panel. Kept as a sibling component so the hook call sits strictly
+ * below the Provider, as required by React's context rules.
+ *
+ * @param {Object} props Passthrough props for `StylesBackgroundPanel`.
+ */
+function BackgroundPanelWithInheritedValue( props ) {
+	const inheritedValue = useInheritedValue();
+	return (
+		<StylesBackgroundPanel { ...props } inheritedValue={ inheritedValue } />
 	);
 }
 

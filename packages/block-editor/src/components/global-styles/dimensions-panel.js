@@ -219,6 +219,8 @@ const DEFAULT_CONTROLS = {
 	childLayout: true,
 };
 
+/** @typedef {import('./types').InheritedValue} InheritedValue */
+
 export default function DimensionsPanel( {
 	as: Wrapper = DimensionsToolsPanel,
 	value,
