@@ -33,8 +33,6 @@ import {
 } from './typography-utils';
 import { getFontStylesAndWeights } from '../../utils/get-font-styles-and-weights';
 
-/** @typedef {import('./types').InheritedValue} InheritedValue */
-
 const MIN_TEXT_COLUMNS = 1;
 const MAX_TEXT_COLUMNS = 6;
 
@@ -184,8 +182,6 @@ const DEFAULT_CONTROLS = {
 	textColumns: true,
 };
 
-/** @typedef {import('./types').InheritedValue} InheritedValue */
-
 export default function TypographyPanel( {
 	as: Wrapper = TypographyToolsPanel,
 	value,
@@ -201,7 +197,21 @@ export default function TypographyPanel( {
 
 	// Font Family
 	const hasFontFamilyEnabled = useHasFontFamilyControl( settings );
-	const fontFamily = decodeValue( inheritedValue?.typography?.fontFamily );
+	// Render the local value when set, otherwise the inherited value
+	// as the at-rest preselection. The placeholder boolean is computed
+	// from `value` directly (not from the merged `fontFamily`) so a
+	// locally-set value never trips the at-rest visual treatment, even
+	// when it equals the inherited value.
+	const inheritedFontFamily = decodeValue(
+		inheritedValue?.typography?.fontFamily
+	);
+	const fontFamily =
+		decodeValue( value?.typography?.fontFamily ) ?? inheritedFontFamily;
+	const isFontFamilyPlaceholder =
+		! value?.typography?.fontFamily &&
+		inheritedFontFamily !== undefined &&
+		inheritedFontFamily !== null &&
+		inheritedFontFamily !== '';
 	const { fontFamilies, fontFamilyFaces } = useMemo( () => {
 		return getMergedFontFamiliesAndFontFamilyFaces( settings, fontFamily );
 	}, [ settings, fontFamily ] );
@@ -270,20 +280,32 @@ export default function TypographyPanel( {
 	const disableCustomFontSizes = ! settings?.typography?.customFontSize;
 	const mergedFontSizes = getMergedFontSizes( settings );
 
-	const fontSize = decodeValue( inheritedValue?.typography?.fontSize );
+	// Local-then-inherited resolution for the rendered value. The slug
+	// extraction reads the same composite raw value so an inherited
+	// preset preselects its chip at rest while a local literal value
+	// renders as a literal in the custom-size input.
+	const rawLocalFontSize = value?.typography?.fontSize;
+	const rawInheritedFontSize = inheritedValue?.typography?.fontSize;
+	const rawFontSizeForDisplay = rawLocalFontSize ?? rawInheritedFontSize;
+	const fontSize = decodeValue( rawFontSizeForDisplay );
+	const inheritedFontSizeDecoded = decodeValue( rawInheritedFontSize );
+	const isFontSizePlaceholder =
+		( rawLocalFontSize === undefined ||
+			rawLocalFontSize === null ||
+			rawLocalFontSize === '' ) &&
+		rawInheritedFontSize !== undefined &&
+		rawInheritedFontSize !== null &&
+		rawInheritedFontSize !== '';
 
-	// Extract the slug from the CSS custom property if it exists
-	const currentFontSizeSlug = ( () => {
-		const rawValue = inheritedValue?.typography?.fontSize;
+	// Extract the slug from the CSS custom property if it exists.
+	const extractSlug = ( rawValue ) => {
 		if ( ! rawValue || typeof rawValue !== 'string' ) {
 			return undefined;
 		}
-
 		// Block supports use `var:preset` format.
 		if ( rawValue.startsWith( 'var:preset|font-size|' ) ) {
 			return rawValue.replace( 'var:preset|font-size|', '' );
 		}
-
 		// Global styles data uses `var(--wp--preset)` format.
 		const cssVarMatch = rawValue.match(
 			/^var\(--wp--preset--font-size--([^)]+)\)$/
@@ -291,9 +313,10 @@ export default function TypographyPanel( {
 		if ( cssVarMatch ) {
 			return cssVarMatch[ 1 ];
 		}
-
 		return undefined;
-	} )();
+	};
+	const currentFontSizeSlug = extractSlug( rawFontSizeForDisplay );
+	const inheritedFontSizeSlug = extractSlug( rawInheritedFontSize );
 
 	const setFontSize = ( newValue, metadata ) => {
 		const actualValue = !! metadata?.slug
@@ -308,6 +331,26 @@ export default function TypographyPanel( {
 			)
 		);
 	};
+	// Display-without-commit interceptor: at-rest, the inner
+	// `FontSizePickerToggleGroup` fires `onChange( undefined )` when the
+	// user activates the already-preselected (inherited) chip. Treat
+	// that as the user's "accept this inherited value" affordance and
+	// commit the inherited value to local. Once committed (no longer
+	// at-rest), the same `undefined` payload represents a normal
+	// deselect, so we let it pass through unchanged. The custom-size
+	// input does not emit `undefined` on focus or activation, so this
+	// hook is correctly scoped to the ToggleGroup activation path.
+	const setFontSizeWithInheritedCommit = ( newValue, metadata ) => {
+		if ( isFontSizePlaceholder && newValue === undefined && ! metadata ) {
+			if ( inheritedFontSizeSlug ) {
+				setFontSize( undefined, { slug: inheritedFontSizeSlug } );
+			} else {
+				setFontSize( inheritedFontSizeDecoded );
+			}
+			return;
+		}
+		setFontSize( newValue, metadata );
+	};
 	const hasFontSize = () => !! value?.typography?.fontSize;
 	const resetFontSize = () => setFontSize( undefined );
 
@@ -316,8 +359,27 @@ export default function TypographyPanel( {
 	const appearanceControlLabel = useAppearanceControlLabel( settings );
 	const hasFontStyles = settings?.typography?.fontStyle;
 	const hasFontWeights = settings?.typography?.fontWeight;
-	const fontStyle = decodeValue( inheritedValue?.typography?.fontStyle );
-	const fontWeight = decodeValue( inheritedValue?.typography?.fontWeight );
+	// Render local-then-inherited; placeholder fires only when both
+	// local leaves are unset and at least one inherited leaf exists.
+	const inheritedFontStyle = decodeValue(
+		inheritedValue?.typography?.fontStyle
+	);
+	const inheritedFontWeight = decodeValue(
+		inheritedValue?.typography?.fontWeight
+	);
+	const fontStyle =
+		decodeValue( value?.typography?.fontStyle ) ?? inheritedFontStyle;
+	const fontWeight =
+		decodeValue( value?.typography?.fontWeight ) ?? inheritedFontWeight;
+	const isFontAppearancePlaceholder =
+		! value?.typography?.fontStyle &&
+		! value?.typography?.fontWeight &&
+		( ( inheritedFontStyle !== undefined &&
+			inheritedFontStyle !== null &&
+			inheritedFontStyle !== '' ) ||
+			( inheritedFontWeight !== undefined &&
+				inheritedFontWeight !== null &&
+				inheritedFontWeight !== '' ) );
 	const setFontAppearance = useCallback(
 		( { fontStyle: newFontStyle, fontWeight: newFontWeight } ) => {
 			// Only update the font style and weight if they have changed.
@@ -334,6 +396,41 @@ export default function TypographyPanel( {
 		},
 		[ fontStyle, fontWeight, onChange, value ]
 	);
+	// Display-without-commit interceptor for FontAppearance: when the
+	// control is at rest (no local override, displaying the inherited
+	// font style/weight), activating the already-preselected option
+	// would otherwise be swallowed by the equality short-circuit in
+	// `setFontAppearance`. Treat that activation as the user's
+	// "accept this inherited value" affordance and commit the
+	// inherited values to local explicitly.
+	const setFontAppearanceWithInheritedCommit = useCallback(
+		( next ) => {
+			if (
+				isFontAppearancePlaceholder &&
+				next.fontStyle === fontStyle &&
+				next.fontWeight === fontWeight
+			) {
+				onChange( {
+					...value,
+					typography: {
+						...value?.typography,
+						fontStyle: fontStyle || undefined,
+						fontWeight: fontWeight || undefined,
+					},
+				} );
+				return;
+			}
+			setFontAppearance( next );
+		},
+		[
+			isFontAppearancePlaceholder,
+			fontStyle,
+			fontWeight,
+			onChange,
+			value,
+			setFontAppearance,
+		]
+	);
 	const hasFontAppearance = () =>
 		!! value?.typography?.fontStyle || !! value?.typography?.fontWeight;
 	const resetFontAppearance = useCallback( () => {
@@ -342,7 +439,15 @@ export default function TypographyPanel( {
 
 	// Line Height
 	const hasLineHeightEnabled = useHasLineHeightControl( settings );
-	const lineHeight = decodeValue( inheritedValue?.typography?.lineHeight );
+	const localLineHeight = decodeValue( value?.typography?.lineHeight );
+	const inheritedLineHeight = decodeValue(
+		inheritedValue?.typography?.lineHeight
+	);
+	const isLineHeightPlaceholder =
+		value?.typography?.lineHeight === undefined &&
+		inheritedLineHeight !== undefined &&
+		inheritedLineHeight !== null &&
+		inheritedLineHeight !== '';
 	const setLineHeight = ( newValue ) => {
 		onChange(
 			setImmutably(
@@ -357,9 +462,15 @@ export default function TypographyPanel( {
 
 	// Letter Spacing
 	const hasLetterSpacingControl = useHasLetterSpacingControl( settings );
-	const letterSpacing = decodeValue(
+	const localLetterSpacing = decodeValue( value?.typography?.letterSpacing );
+	const inheritedLetterSpacing = decodeValue(
 		inheritedValue?.typography?.letterSpacing
 	);
+	const isLetterSpacingPlaceholder =
+		! value?.typography?.letterSpacing &&
+		inheritedLetterSpacing !== undefined &&
+		inheritedLetterSpacing !== null &&
+		inheritedLetterSpacing !== '';
 	const setLetterSpacing = ( newValue ) => {
 		onChange(
 			setImmutably(
@@ -374,7 +485,15 @@ export default function TypographyPanel( {
 
 	// Text Indent
 	const hasTextIndentControl = useHasTextIndentControl( settings );
-	const textIndent = decodeValue( inheritedValue?.typography?.textIndent );
+	const localTextIndent = decodeValue( value?.typography?.textIndent );
+	const inheritedTextIndent = decodeValue(
+		inheritedValue?.typography?.textIndent
+	);
+	const isTextIndentPlaceholder =
+		! value?.typography?.textIndent &&
+		inheritedTextIndent !== undefined &&
+		inheritedTextIndent !== null &&
+		inheritedTextIndent !== '';
 
 	// Get the setting value - can be 'subsequent' (default), 'all', or false.
 	// The setting determines which CSS selector is used for the text-indent style.
@@ -416,7 +535,15 @@ export default function TypographyPanel( {
 
 	// Text Columns
 	const hasTextColumnsControl = useHasTextColumnsControl( settings );
-	const textColumns = decodeValue( inheritedValue?.typography?.textColumns );
+	const localTextColumns = decodeValue( value?.typography?.textColumns );
+	const inheritedTextColumns = decodeValue(
+		inheritedValue?.typography?.textColumns
+	);
+	const isTextColumnsPlaceholder =
+		! value?.typography?.textColumns &&
+		inheritedTextColumns !== undefined &&
+		inheritedTextColumns !== null &&
+		inheritedTextColumns !== '';
 	const setTextColumns = ( newValue ) => {
 		onChange(
 			setImmutably(
@@ -431,9 +558,17 @@ export default function TypographyPanel( {
 
 	// Text Transform
 	const hasTextTransformControl = useHasTextTransformControl( settings );
-	const textTransform = decodeValue(
+	const inheritedTextTransform = decodeValue(
 		inheritedValue?.typography?.textTransform
 	);
+	const textTransform =
+		decodeValue( value?.typography?.textTransform ) ??
+		inheritedTextTransform;
+	const isTextTransformPlaceholder =
+		! value?.typography?.textTransform &&
+		inheritedTextTransform !== undefined &&
+		inheritedTextTransform !== null &&
+		inheritedTextTransform !== '';
 	const setTextTransform = ( newValue ) => {
 		onChange(
 			setImmutably(
@@ -443,14 +578,37 @@ export default function TypographyPanel( {
 			)
 		);
 	};
+	// Display-without-commit interceptor: when at-rest, the inner
+	// `ToggleGroupControl` fires `onChange( undefined )` if the user
+	// activates the already-preselected (inherited) option. We treat
+	// that activation as the user's "accept this inherited value"
+	// affordance and commit the inherited value to local. When
+	// committed (no longer at-rest), the same `undefined` payload
+	// represents a normal `isDeselectable` deselect, so we let it pass
+	// through unchanged.
+	const setTextTransformWithInheritedCommit = ( newValue ) => {
+		if ( isTextTransformPlaceholder && newValue === undefined ) {
+			setTextTransform( inheritedTextTransform );
+			return;
+		}
+		setTextTransform( newValue );
+	};
 	const hasTextTransform = () => !! value?.typography?.textTransform;
 	const resetTextTransform = () => setTextTransform( undefined );
 
 	// Text Decoration
 	const hasTextDecorationControl = useHasTextDecorationControl( settings );
-	const textDecoration = decodeValue(
+	const inheritedTextDecoration = decodeValue(
 		inheritedValue?.typography?.textDecoration
 	);
+	const textDecoration =
+		decodeValue( value?.typography?.textDecoration ) ??
+		inheritedTextDecoration;
+	const isTextDecorationPlaceholder =
+		! value?.typography?.textDecoration &&
+		inheritedTextDecoration !== undefined &&
+		inheritedTextDecoration !== null &&
+		inheritedTextDecoration !== '';
 	const setTextDecoration = ( newValue ) => {
 		onChange(
 			setImmutably(
@@ -460,12 +618,28 @@ export default function TypographyPanel( {
 			)
 		);
 	};
+	const setTextDecorationWithInheritedCommit = ( newValue ) => {
+		if ( isTextDecorationPlaceholder && newValue === undefined ) {
+			setTextDecoration( inheritedTextDecoration );
+			return;
+		}
+		setTextDecoration( newValue );
+	};
 	const hasTextDecoration = () => !! value?.typography?.textDecoration;
 	const resetTextDecoration = () => setTextDecoration( undefined );
 
 	// Text Orientation
 	const hasWritingModeControl = useHasWritingModeControl( settings );
-	const writingMode = decodeValue( inheritedValue?.typography?.writingMode );
+	const inheritedWritingMode = decodeValue(
+		inheritedValue?.typography?.writingMode
+	);
+	const writingMode =
+		decodeValue( value?.typography?.writingMode ) ?? inheritedWritingMode;
+	const isWritingModePlaceholder =
+		! value?.typography?.writingMode &&
+		inheritedWritingMode !== undefined &&
+		inheritedWritingMode !== null &&
+		inheritedWritingMode !== '';
 	const setWritingMode = ( newValue ) => {
 		onChange(
 			setImmutably(
@@ -475,13 +649,29 @@ export default function TypographyPanel( {
 			)
 		);
 	};
+	const setWritingModeWithInheritedCommit = ( newValue ) => {
+		if ( isWritingModePlaceholder && newValue === undefined ) {
+			setWritingMode( inheritedWritingMode );
+			return;
+		}
+		setWritingMode( newValue );
+	};
 	const hasWritingMode = () => !! value?.typography?.writingMode;
 	const resetWritingMode = () => setWritingMode( undefined );
 
 	// Text Alignment
 	const hasTextAlignmentControl = useHasTextAlignmentControl( settings );
 
-	const textAlign = decodeValue( inheritedValue?.typography?.textAlign );
+	const inheritedTextAlign = decodeValue(
+		inheritedValue?.typography?.textAlign
+	);
+	const textAlign =
+		decodeValue( value?.typography?.textAlign ) ?? inheritedTextAlign;
+	const isTextAlignPlaceholder =
+		! value?.typography?.textAlign &&
+		inheritedTextAlign !== undefined &&
+		inheritedTextAlign !== null &&
+		inheritedTextAlign !== '';
 	const setTextAlign = ( newValue ) => {
 		onChange(
 			setImmutably(
@@ -490,6 +680,13 @@ export default function TypographyPanel( {
 				newValue || undefined
 			)
 		);
+	};
+	const setTextAlignWithInheritedCommit = ( newValue ) => {
+		if ( isTextAlignPlaceholder && newValue === undefined ) {
+			setTextAlign( inheritedTextAlign );
+			return;
+		}
+		setTextAlign( newValue );
 	};
 	const hasTextAlign = () => !! value?.typography?.textAlign;
 	const resetTextAlign = () => setTextAlign( undefined );
@@ -521,6 +718,11 @@ export default function TypographyPanel( {
 						value={ fontFamily }
 						onChange={ setFontFamily }
 						size="__unstable-large"
+						className={
+							isFontFamilyPlaceholder
+								? 'is-inherited-placeholder'
+								: undefined
+						}
 					/>
 				</ToolsPanelItem>
 			) }
@@ -532,16 +734,26 @@ export default function TypographyPanel( {
 					isShownByDefault={ defaultControls.fontSize }
 					panelId={ panelId }
 				>
-					<FontSizePicker
-						value={ currentFontSizeSlug || fontSize }
-						valueMode={ currentFontSizeSlug ? 'slug' : 'literal' }
-						onChange={ setFontSize }
-						fontSizes={ mergedFontSizes }
-						disableCustomFontSizes={ disableCustomFontSizes }
-						withReset={ false }
-						withSlider
-						size="__unstable-large"
-					/>
+					<div
+						className={
+							isFontSizePlaceholder
+								? 'is-inherited-placeholder'
+								: undefined
+						}
+					>
+						<FontSizePicker
+							value={ currentFontSizeSlug || fontSize }
+							valueMode={
+								currentFontSizeSlug ? 'slug' : 'literal'
+							}
+							onChange={ setFontSizeWithInheritedCommit }
+							fontSizes={ mergedFontSizes }
+							disableCustomFontSizes={ disableCustomFontSizes }
+							withReset={ false }
+							withSlider
+							size="__unstable-large"
+						/>
+					</div>
 				</ToolsPanelItem>
 			) }
 			{ hasAppearanceControl && (
@@ -552,17 +764,25 @@ export default function TypographyPanel( {
 					isShownByDefault={ defaultControls.fontAppearance }
 					panelId={ panelId }
 				>
-					<FontAppearanceControl
-						value={ {
-							fontStyle,
-							fontWeight,
-						} }
-						onChange={ setFontAppearance }
-						hasFontStyles={ hasFontStyles }
-						hasFontWeights={ hasFontWeights }
-						fontFamilyFaces={ fontFamilyFaces }
-						size="__unstable-large"
-					/>
+					<div
+						className={
+							isFontAppearancePlaceholder
+								? 'is-inherited-placeholder'
+								: undefined
+						}
+					>
+						<FontAppearanceControl
+							value={ {
+								fontStyle,
+								fontWeight,
+							} }
+							onChange={ setFontAppearanceWithInheritedCommit }
+							hasFontStyles={ hasFontStyles }
+							hasFontWeights={ hasFontWeights }
+							fontFamilyFaces={ fontFamilyFaces }
+							size="__unstable-large"
+						/>
+					</div>
 				</ToolsPanelItem>
 			) }
 			{ hasLineHeightEnabled && (
@@ -576,9 +796,19 @@ export default function TypographyPanel( {
 				>
 					<LineHeightControl
 						__unstableInputWidth="auto"
-						value={ lineHeight }
+						value={ localLineHeight }
 						onChange={ setLineHeight }
 						size="__unstable-large"
+						className={
+							isLineHeightPlaceholder
+								? 'is-inherited-placeholder'
+								: undefined
+						}
+						placeholder={
+							isLineHeightPlaceholder
+								? inheritedLineHeight
+								: undefined
+						}
 					/>
 				</ToolsPanelItem>
 			) }
@@ -592,10 +822,20 @@ export default function TypographyPanel( {
 					panelId={ panelId }
 				>
 					<LetterSpacingControl
-						value={ letterSpacing }
+						value={ localLetterSpacing }
 						onChange={ setLetterSpacing }
 						size="__unstable-large"
 						__unstableInputWidth="auto"
+						className={
+							isLetterSpacingPlaceholder
+								? 'is-inherited-placeholder'
+								: undefined
+						}
+						placeholder={
+							isLetterSpacingPlaceholder
+								? inheritedLetterSpacing
+								: undefined
+						}
 					/>
 				</ToolsPanelItem>
 			) }
@@ -608,12 +848,22 @@ export default function TypographyPanel( {
 					panelId={ panelId }
 				>
 					<TextIndentControl
-						value={ textIndent }
+						value={ localTextIndent }
 						onChange={ setTextIndentValue }
 						size="__unstable-large"
 						__unstableInputWidth="auto"
 						withSlider
 						hasBottomMargin={ isGlobalStyles }
+						className={
+							isTextIndentPlaceholder
+								? 'is-inherited-placeholder'
+								: undefined
+						}
+						placeholder={
+							isTextIndentPlaceholder
+								? inheritedTextIndent
+								: undefined
+						}
 					/>
 					{ isGlobalStyles && (
 						<ToggleControl
@@ -635,13 +885,23 @@ export default function TypographyPanel( {
 					panelId={ panelId }
 				>
 					<NumberControl
+						className={
+							isTextColumnsPlaceholder
+								? 'is-inherited-placeholder'
+								: undefined
+						}
 						label={ __( 'Columns' ) }
 						max={ MAX_TEXT_COLUMNS }
 						min={ MIN_TEXT_COLUMNS }
 						onChange={ setTextColumns }
+						placeholder={
+							isTextColumnsPlaceholder
+								? inheritedTextColumns
+								: undefined
+						}
 						size="__unstable-large"
 						spinControls="custom"
-						value={ textColumns }
+						value={ localTextColumns }
 						initialPosition={ 1 }
 					/>
 				</ToolsPanelItem>
@@ -657,9 +917,14 @@ export default function TypographyPanel( {
 				>
 					<TextDecorationControl
 						value={ textDecoration }
-						onChange={ setTextDecoration }
+						onChange={ setTextDecorationWithInheritedCommit }
 						size="__unstable-large"
 						__unstableInputWidth="auto"
+						className={
+							isTextDecorationPlaceholder
+								? 'is-inherited-placeholder'
+								: undefined
+						}
 					/>
 				</ToolsPanelItem>
 			) }
@@ -674,8 +939,13 @@ export default function TypographyPanel( {
 				>
 					<WritingModeControl
 						value={ writingMode }
-						onChange={ setWritingMode }
+						onChange={ setWritingModeWithInheritedCommit }
 						size="__unstable-large"
+						className={
+							isWritingModePlaceholder
+								? 'is-inherited-placeholder'
+								: undefined
+						}
 					/>
 				</ToolsPanelItem>
 			) }
@@ -689,10 +959,15 @@ export default function TypographyPanel( {
 				>
 					<TextTransformControl
 						value={ textTransform }
-						onChange={ setTextTransform }
+						onChange={ setTextTransformWithInheritedCommit }
 						showNone
 						isBlock
 						size="__unstable-large"
+						className={
+							isTextTransformPlaceholder
+								? 'is-inherited-placeholder'
+								: undefined
+						}
 					/>
 				</ToolsPanelItem>
 			) }
@@ -706,9 +981,14 @@ export default function TypographyPanel( {
 				>
 					<TextAlignmentControl
 						value={ textAlign }
-						onChange={ setTextAlign }
+						onChange={ setTextAlignWithInheritedCommit }
 						options={ [ 'left', 'center', 'right', 'justify' ] }
 						size="__unstable-large"
+						className={
+							isTextAlignPlaceholder
+								? 'is-inherited-placeholder'
+								: undefined
+						}
 					/>
 
 					{ textAlign === 'justify' && (

@@ -459,16 +459,19 @@ describe( 'useInheritedValue / InheritedValueProvider', () => {
 	} );
 
 	test( 'Provider issues exactly one useSelect subscription per mount', () => {
-		const gs = {
-			styles: {
-				typography: { fontSize: '16px' },
-				elements: { h2: { typography: { fontSize: '24px' } } },
-			},
+		// `globalStylesDataKey` holds the BARE merged styles tree in
+		// production (see `editor/src/components/provider/
+		// use-block-editor-settings.js:237`, `mergedGlobalStyles.styles`),
+		// not the wrapped `{ settings, styles }` envelope. The Provider
+		// wraps the bare tree before passing to the builder.
+		const rawGlobalStyles = {
+			typography: { fontSize: '16px' },
+			elements: { h2: { typography: { fontSize: '24px' } } },
 		};
 		useSelect.mockImplementation( ( mapSelect ) =>
 			mapSelect( () => ( {
 				getSettings: () => ( {
-					[ globalStylesDataKey ]: gs,
+					[ globalStylesDataKey ]: rawGlobalStyles,
 				} ),
 			} ) )
 		);
@@ -485,16 +488,14 @@ describe( 'useInheritedValue / InheritedValueProvider', () => {
 	} );
 
 	test( 'hook returns element-folded payload when element is supplied', () => {
-		const gs = {
-			styles: {
-				typography: { fontSize: '16px' },
-				elements: { h2: { typography: { fontSize: '24px' } } },
-			},
+		const rawGlobalStyles = {
+			typography: { fontSize: '16px' },
+			elements: { h2: { typography: { fontSize: '24px' } } },
 		};
 		useSelect.mockImplementation( ( mapSelect ) =>
 			mapSelect( () => ( {
 				getSettings: () => ( {
-					[ globalStylesDataKey ]: gs,
+					[ globalStylesDataKey ]: rawGlobalStyles,
 				} ),
 			} ) )
 		);

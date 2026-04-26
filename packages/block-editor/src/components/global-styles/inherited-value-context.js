@@ -31,6 +31,10 @@ export const InheritedValueContext = createContext( null );
  * `useSelect` and propagates it alongside the selected block's
  * `blockName` and `ownVariation` to every descendant panel.
  *
+ * The settings value is the bare merged styles tree, so the Provider wraps it
+ * as `{ styles: rawGlobalStylesData }` before passing it to the builder and
+ * ref-resolver helpers.
+ *
  * @param {Object}  props
  * @param {?string} props.blockName      Selected block name (e.g. `core/heading`).
  * @param {?string} [props.ownVariation] Detected variation slug (see `getVariationNameFromClass`).
@@ -41,11 +45,15 @@ export function InheritedValueProvider( {
 	ownVariation = null,
 	children,
 } ) {
-	const globalStyles = useSelect(
+	const rawGlobalStylesData = useSelect(
 		( select ) =>
 			select( blockEditorStore ).getSettings()[ globalStylesDataKey ] ??
 			null,
 		[]
+	);
+	const globalStyles = useMemo(
+		() => ( rawGlobalStylesData ? { styles: rawGlobalStylesData } : null ),
+		[ rawGlobalStylesData ]
 	);
 	const contextValue = useMemo(
 		() => ( { globalStyles, blockName: blockName ?? null, ownVariation } ),
