@@ -87,6 +87,8 @@ export default function BoxInputControl( {
 	min = 0,
 	presets,
 	presetKey,
+	className: classNameProp,
+	placeholder: placeholderProp,
 	...props
 }: BoxControlInputControlProps ) {
 	const defaultValuesToModify = getSidesToModify( side, sides );
@@ -208,7 +210,11 @@ export default function BoxInputControl( {
 							min={ min }
 							__shouldNotWarnDeprecated36pxSize
 							__next40pxDefaultSize={ __next40pxDefaultSize }
-							className="component-box-control__unit-control"
+							className={
+								classNameProp
+									? `component-box-control__unit-control ${ classNameProp }`
+									: 'component-box-control__unit-control'
+							}
 							id={ inputId }
 							isPressEnterToChange
 							disableUnits={ isMixed || isMixedUnit }
@@ -217,7 +223,7 @@ export default function BoxInputControl( {
 							onUnitChange={ handleOnUnitChange }
 							onFocus={ handleOnFocus }
 							label={ LABELS[ side ] }
-							placeholder={ mixedPlaceholder }
+							placeholder={ mixedPlaceholder ?? placeholderProp }
 							hideLabelFromVision
 						/>
 					</Tooltip>

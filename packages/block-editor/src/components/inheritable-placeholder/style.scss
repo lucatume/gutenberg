@@ -4,32 +4,20 @@
 /**
  * Visual treatment for Global Styles inherited-value placeholders.
  *
- * Source of truth for the rules below:
- *   plans/2026-04-20-reflect-global-styles-in-block-inspector/06b-visual-treatment.md
- *
- * As of 2026-04-26, Phase 1 covers every control in the six block-support
- * inspector panels (typography, dimensions, border, color, background,
- * filters). The 2026-04-25 input-only descope is reversed; per-archetype
- * at-rest treatments for ToggleGroup-based selects, CustomSelect-based
- * dropdowns, color swatches, toggles, ranges, and preset pickers are
- * defined in this file and applied via the `is-inherited-placeholder`
- * class hook from the consuming panel.
- *
  * `--wp-block-synced-color` is defined in
  * `packages/base-styles/_default-custom-properties.scss`.
  *
  * Non-color secondary signal per archetype:
  *
  * - Inputs (text/number/unit): italic `::placeholder` text.
- * - ToggleGroup-style selects: dashed border on the at-rest selected
- *   option pill.
+ * - ToggleGroup-style selects: label accent with selected-option dot.
  * - CustomSelect-style dropdowns: italic trigger text.
+ * - Native `<select>` (SelectControl): italic select text + label accent.
  * - Compound (BoxControl, BorderBoxControl): per-side independence
  *   inherited from the input archetype rule below.
  *
  * Each signal is detectable in a monochrome viewport so colour-blind
- * users still receive the at-rest cue (Task 9 monochrome-viewport
- * test).
+ * users still receive the at-rest cue.
  */
 
 // Visually-hidden description element. Mirrors the WordPress
@@ -96,5 +84,17 @@
 	> button[aria-haspopup="listbox"] {
 		color: var(--wp-block-synced-color);
 		font-style: italic;
+	}
+
+	// Native `<select>` (SelectControl, e.g. AspectRatioTool). The
+	// className lands on the wrapping div; the rule targets the
+	// inner select element so only the at-rest preselected text is
+	// tinted, leaving option panel rendering unchanged. A dashed
+	// border supplies the non-color signal.
+	select {
+		color: var(--wp-block-synced-color);
+		font-style: italic;
+		border-style: dashed;
+		border-color: var(--wp-block-synced-color);
 	}
 }
