@@ -110,6 +110,18 @@
 		border: 1px dashed var(--wp-block-synced-color);
 	}
 
+	// ColorPanelDropdown toggle. The class lands on the `Dropdown`
+	// wrapper; the rule targets the toggle button it renders. The
+	// button is the row that displays the swatch indicator(s) and the
+	// label (Text / Background / Link / Heading / etc.). The border and
+	// italic label provide the at-rest cue; the inner color swatch picks
+	// up the border via the descendant `.components-color-indicator` rule below.
+	.block-editor-panel-color-gradient-settings__dropdown {
+		color: var(--wp-block-synced-color);
+		font-style: italic;
+		border: 1px dashed var(--wp-block-synced-color);
+	}
+
 	// Compound BorderBoxControl. The class lands on the outer
 	// `BorderBoxControl` wrapper. The inner border-control rendered in
 	// linked mode is a width input + color swatch + style toggle; in

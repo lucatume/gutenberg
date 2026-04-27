@@ -181,18 +181,38 @@ function ColorPanelTab( {
 	inheritedValue,
 	userValue,
 	setValue,
+	isPlaceholder,
 	colorGradientControlSettings,
 } ) {
+	// Display value: prefer the user's local value when set; otherwise
+	// fall back to the inherited value so the at-rest preselection is visible
+	// inside the picker.
+	const displayed = userValue ?? inheritedValue;
+	// Display-without-commit interceptor. `ColorPalette` and
+	// `GradientPicker` fire `onChange( undefined )` when the user
+	// clicks the currently-selected option. At rest, that click is the
+	// user's "accept inherited" gesture: the displayed value comes from
+	// `inheritedValue`, so re-route the `undefined` payload to a commit of
+	// the inherited value instead of the default "clear local" behaviour.
+	// Once a local value is set, the same click correctly clears local back
+	// to at rest, so the toggle behaviour is preserved.
+	const onChange = ( newValue ) => {
+		if ( isPlaceholder && newValue === undefined ) {
+			setValue( inheritedValue );
+			return;
+		}
+		setValue( newValue );
+	};
 	return (
 		<ColorGradientControl
 			{ ...colorGradientControlSettings }
 			showTitle={ false }
 			enableAlpha
 			__experimentalIsRenderedInSidebar
-			colorValue={ isGradient ? undefined : inheritedValue }
-			gradientValue={ isGradient ? inheritedValue : undefined }
-			onColorChange={ isGradient ? undefined : setValue }
-			onGradientChange={ isGradient ? setValue : undefined }
+			colorValue={ isGradient ? undefined : displayed }
+			gradientValue={ isGradient ? displayed : undefined }
+			onColorChange={ isGradient ? undefined : onChange }
+			onGradientChange={ isGradient ? onChange : undefined }
 			clearable={ inheritedValue === userValue }
 			headingLevel={ 3 }
 		/>
@@ -209,6 +229,7 @@ export function ColorPanelDropdown( {
 	colorGradientControlSettings,
 	panelId,
 	className = 'block-editor-tools-panel-color-gradient-settings__item',
+	isPlaceholder = false,
 } ) {
 	const currentTab = tabs.find( ( tab ) => tab.userValue !== undefined );
 	const { key: firstTabKey, ...firstTab } = tabs[ 0 ] ?? {};
@@ -224,7 +245,10 @@ export function ColorPanelDropdown( {
 		>
 			<Dropdown
 				popoverProps={ popoverProps }
-				className="block-editor-tools-panel-color-gradient-settings__dropdown"
+				className={ clsx(
+					'block-editor-tools-panel-color-gradient-settings__dropdown',
+					{ 'is-inherited-placeholder': isPlaceholder }
+				) }
 				renderToggle={ ( { onToggle, isOpen } ) => {
 					const toggleProps = {
 						onClick: onToggle,
@@ -317,8 +341,6 @@ export function ColorPanelDropdown( {
 		</ToolsPanelItem>
 	);
 }
-
-/** @typedef {import('./types').InheritedValue} InheritedValue */
 
 export default function ColorPanel( {
 	as: Wrapper = ColorToolsPanel,
@@ -562,7 +584,9 @@ export default function ColorPanel( {
 			hasValue: hasTextColor,
 			resetValue: resetTextColor,
 			isShownByDefault: defaultControls.text,
-			indicators: [ textColor ],
+			indicators: [ userTextColor ?? textColor ],
+			isPlaceholder:
+				userTextColor === undefined && textColor !== undefined,
 			tabs: [
 				{
 					key: 'text',
@@ -570,6 +594,8 @@ export default function ColorPanel( {
 					inheritedValue: textColor,
 					setValue: setTextColor,
 					userValue: userTextColor,
+					isPlaceholder:
+						userTextColor === undefined && textColor !== undefined,
 				},
 			],
 		},
@@ -580,9 +606,16 @@ export default function ColorPanel( {
 			resetValue: resetBackground,
 			isShownByDefault: defaultControls.background,
 			indicators: [
-				( showGradientColors ? gradient : undefined ) ??
+				userGradient ??
+					userBackgroundColor ??
+					( showGradientColors ? gradient : undefined ) ??
 					backgroundColor,
 			],
+			isPlaceholder:
+				userBackgroundColor === undefined &&
+				userGradient === undefined &&
+				( backgroundColor !== undefined ||
+					( showGradientColors && gradient !== undefined ) ),
 			tabs: [
 				hasSolidColors && {
 					key: 'background',
@@ -590,6 +623,9 @@ export default function ColorPanel( {
 					inheritedValue: backgroundColor,
 					setValue: setBackgroundColor,
 					userValue: userBackgroundColor,
+					isPlaceholder:
+						userBackgroundColor === undefined &&
+						backgroundColor !== undefined,
 				},
 				showGradientColors && {
 					key: 'gradient',
@@ -598,6 +634,8 @@ export default function ColorPanel( {
 					setValue: setGradient,
 					userValue: userGradient,
 					isGradient: true,
+					isPlaceholder:
+						userGradient === undefined && gradient !== undefined,
 				},
 			].filter( Boolean ),
 		},
@@ -607,7 +645,14 @@ export default function ColorPanel( {
 			hasValue: hasLink,
 			resetValue: resetLink,
 			isShownByDefault: defaultControls.link,
-			indicators: [ linkColor, hoverLinkColor ],
+			indicators: [
+				userLinkColor ?? linkColor,
+				userHoverLinkColor ?? hoverLinkColor,
+			],
+			isPlaceholder:
+				userLinkColor === undefined &&
+				userHoverLinkColor === undefined &&
+				( linkColor !== undefined || hoverLinkColor !== undefined ),
 			tabs: [
 				{
 					key: 'link',
@@ -615,6 +660,8 @@ export default function ColorPanel( {
 					inheritedValue: linkColor,
 					setValue: setLinkColor,
 					userValue: userLinkColor,
+					isPlaceholder:
+						userLinkColor === undefined && linkColor !== undefined,
 				},
 				{
 					key: 'hover',
@@ -622,6 +669,9 @@ export default function ColorPanel( {
 					inheritedValue: hoverLinkColor,
 					setValue: setHoverLinkColor,
 					userValue: userHoverLinkColor,
+					isPlaceholder:
+						userHoverLinkColor === undefined &&
+						hoverLinkColor !== undefined,
 				},
 			],
 		},
@@ -699,6 +749,25 @@ export default function ColorPanel( {
 		// as there isn't yet a way to set padding for the element.
 		const supportsBackground = name !== 'caption';
 
+		// Per-tab placeholder flags. The item-level placeholder is active when
+		// there is no local color on any axis and at least one inherited color.
+		const isElementTextPlaceholder =
+			elementTextUserColor === undefined &&
+			elementTextColor !== undefined;
+		const isElementBackgroundPlaceholder =
+			elementBackgroundUserColor === undefined &&
+			elementBackgroundColor !== undefined;
+		const isElementGradientPlaceholder =
+			elementGradientUserColor === undefined &&
+			elementGradient !== undefined;
+		const isElementPlaceholder =
+			elementTextUserColor === undefined &&
+			elementBackgroundUserColor === undefined &&
+			elementGradientUserColor === undefined &&
+			( elementTextColor !== undefined ||
+				elementBackgroundColor !== undefined ||
+				elementGradient !== undefined );
+
 		items.push( {
 			key: name,
 			label: elementLabel,
@@ -708,14 +777,21 @@ export default function ColorPanel( {
 			indicators:
 				supportsTextColor && supportsBackground
 					? [
-							elementTextColor,
-							elementGradient ?? elementBackgroundColor,
+							elementTextUserColor ?? elementTextColor,
+							elementGradientUserColor ??
+								elementGradient ??
+								elementBackgroundUserColor ??
+								elementBackgroundColor,
 					  ]
 					: [
 							supportsTextColor
-								? elementTextColor
-								: elementGradient ?? elementBackgroundColor,
+								? elementTextUserColor ?? elementTextColor
+								: elementGradientUserColor ??
+								  elementGradient ??
+								  elementBackgroundUserColor ??
+								  elementBackgroundColor,
 					  ],
+			isPlaceholder: isElementPlaceholder,
 			tabs: [
 				hasSolidColors &&
 					supportsTextColor && {
@@ -724,6 +800,7 @@ export default function ColorPanel( {
 						inheritedValue: elementTextColor,
 						setValue: setElementTextColor,
 						userValue: elementTextUserColor,
+						isPlaceholder: isElementTextPlaceholder,
 					},
 				hasSolidColors &&
 					supportsBackground && {
@@ -732,6 +809,7 @@ export default function ColorPanel( {
 						inheritedValue: elementBackgroundColor,
 						setValue: setElementBackgroundColor,
 						userValue: elementBackgroundUserColor,
+						isPlaceholder: isElementBackgroundPlaceholder,
 					},
 				hasGradientColors &&
 					supportsBackground && {
@@ -741,6 +819,7 @@ export default function ColorPanel( {
 						setValue: setElementGradient,
 						userValue: elementGradientUserColor,
 						isGradient: true,
+						isPlaceholder: isElementGradientPlaceholder,
 					},
 			].filter( Boolean ),
 		} );
