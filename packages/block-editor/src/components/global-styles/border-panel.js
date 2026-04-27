@@ -94,8 +94,6 @@ const DEFAULT_CONTROLS = {
 	shadow: true,
 };
 
-/** @typedef {import('./types').InheritedValue} InheritedValue */
-
 export default function BorderPanel( {
 	as: Wrapper = BorderToolsPanel,
 	value,
@@ -122,37 +120,72 @@ export default function BorderPanel( {
 			? 'var:preset|color|' + colorObject.slug
 			: colorValue;
 	};
-	const border = useMemo( () => {
-		if ( hasSplitBorders( inheritedValue?.border ) ) {
-			const borderValue = { ...inheritedValue?.border };
-			[ 'top', 'right', 'bottom', 'left' ].forEach( ( side ) => {
-				borderValue[ side ] = {
-					...borderValue[ side ],
-					color: decodeValue( borderValue[ side ]?.color ),
-				};
-			} );
-			return borderValue;
-		}
-		return {
-			...inheritedValue?.border,
-			color: inheritedValue?.border?.color
-				? decodeValue( inheritedValue?.border?.color )
-				: undefined,
-		};
-	}, [ inheritedValue?.border, decodeValue ] );
+	// Decode a `border` sub-tree (handles split borders + flat shape).
+	const decodeBorder = useCallback(
+		( source ) => {
+			if ( ! source ) {
+				return undefined;
+			}
+			if ( hasSplitBorders( source ) ) {
+				const out = { ...source };
+				[ 'top', 'right', 'bottom', 'left' ].forEach( ( side ) => {
+					out[ side ] = {
+						...out[ side ],
+						color: decodeValue( out[ side ]?.color ),
+					};
+				} );
+				return out;
+			}
+			return {
+				...source,
+				color: source.color ? decodeValue( source.color ) : undefined,
+			};
+		},
+		[ decodeValue ]
+	);
+	// Local-then-inherited: prefer the user's locally-set border (whether
+	// flat or split) when defined, otherwise fall back to the inherited
+	// Global Styles border. The merge happens at the sub-tree root, not
+	// at the leaf level — borders are commonly authored as a single
+	// affordance in the inspector, so partial leaf merges would be
+	// surprising.
+	const localBorder = useMemo(
+		() => decodeBorder( value?.border ),
+		[ value?.border, decodeBorder ]
+	);
+	const inheritedBorder = useMemo(
+		() => decodeBorder( inheritedValue?.border ),
+		[ inheritedValue?.border, decodeBorder ]
+	);
+	const isBorderPlaceholder =
+		! isDefinedBorder( value?.border ) &&
+		!! inheritedBorder &&
+		isDefinedBorder( inheritedBorder );
+	const border = isBorderPlaceholder ? inheritedBorder : localBorder;
 	const setBorder = ( newBorder ) =>
 		onChange( { ...value, border: newBorder } );
 	const showBorderColor = useHasBorderColorControl( settings );
 	const showBorderStyle = useHasBorderStyleControl( settings );
 	const showBorderWidth = useHasBorderWidthControl( settings );
 
-	// Border radius.
+	// Border radius. Input archetype: `value` is local-only, and `placeholder`
+	// carries decoded inherited values for empty inputs.
 	const showBorderRadius = useHasBorderRadiusControl( settings );
-	const borderRadiusValues = useMemo( () => {
+	const localBorderRadius = useMemo( () => {
+		if ( typeof value?.border?.radius !== 'object' ) {
+			return decodeValue( value?.border?.radius );
+		}
+		return {
+			topLeft: decodeValue( value?.border?.radius?.topLeft ),
+			topRight: decodeValue( value?.border?.radius?.topRight ),
+			bottomLeft: decodeValue( value?.border?.radius?.bottomLeft ),
+			bottomRight: decodeValue( value?.border?.radius?.bottomRight ),
+		};
+	}, [ value?.border?.radius, decodeValue ] );
+	const inheritedBorderRadius = useMemo( () => {
 		if ( typeof inheritedValue?.border?.radius !== 'object' ) {
 			return decodeValue( inheritedValue?.border?.radius );
 		}
-
 		return {
 			topLeft: decodeValue( inheritedValue?.border?.radius?.topLeft ),
 			topRight: decodeValue( inheritedValue?.border?.radius?.topRight ),
@@ -169,14 +202,49 @@ export default function BorderPanel( {
 	const hasBorderRadius = () => {
 		const borderValues = value?.border?.radius;
 		if ( typeof borderValues === 'object' ) {
-			return Object.entries( borderValues ).some( Boolean );
+			return Object.entries( borderValues ).some( ( [ , v ] ) => !! v );
 		}
 		return !! borderValues;
 	};
+	const isBorderRadiusPlaceholder = ! hasBorderRadius();
+	// Build an object placeholder so unlinked-mode shows per-corner inherited
+	// values. The control accepts either a string or an object; passing the
+	// object form is correct in both modes (the control collapses to the
+	// `all`/first corner in linked mode).
+	const borderRadiusPlaceholder = useMemo( () => {
+		if ( ! isBorderRadiusPlaceholder ) {
+			return undefined;
+		}
+		if ( typeof inheritedBorderRadius === 'string' ) {
+			return inheritedBorderRadius;
+		}
+		const obj = inheritedBorderRadius;
+		if ( ! obj ) {
+			return undefined;
+		}
+		const all =
+			obj.topLeft &&
+			obj.topLeft === obj.topRight &&
+			obj.topLeft === obj.bottomLeft &&
+			obj.topLeft === obj.bottomRight
+				? obj.topLeft
+				: undefined;
+		return { all, ...obj };
+	}, [ isBorderRadiusPlaceholder, inheritedBorderRadius ] );
 	const hasShadowControl = useHasShadowControl( settings );
 
-	// Shadow
-	const shadow = decodeValue( inheritedValue?.shadow );
+	// Shadow. At rest, the popover toggle button uses the placeholder
+	// treatment, and the popover preset list pre-selects the inherited shadow.
+	// The interceptor below recognises the user's "accept inherited" click as
+	// an explicit commit, mirroring the ToggleGroup pattern in the typography
+	// panel.
+	const localShadow = decodeValue( value?.shadow );
+	const inheritedShadow = decodeValue( inheritedValue?.shadow );
+	const isShadowPlaceholder =
+		localShadow === undefined &&
+		inheritedShadow !== undefined &&
+		inheritedShadow !== '';
+	const shadow = isShadowPlaceholder ? inheritedShadow : localShadow;
 	const shadowPresets = settings?.shadow?.presets ?? {};
 	const mergedShadowPresets =
 		shadowPresets.custom ??
@@ -195,6 +263,20 @@ export default function BorderPanel( {
 				slug ? `var:preset|shadow|${ slug }` : newValue || undefined
 			)
 		);
+	};
+	// Display-without-commit interceptor for the shadow preset list. When the
+	// user is at the at-rest preselect (local is undefined, inherited is the
+	// active shadow), `ShadowPresets`' default toggle-off behaviour would
+	// interpret the click on the highlighted preset as `undefined` (clear).
+	// Re-route it to an explicit commit of the inherited value, so clicking
+	// the visible preselected preset is the user's "accept this inherited
+	// value" affordance.
+	const setShadowWithInheritedCommit = ( newValue ) => {
+		if ( isShadowPlaceholder && newValue === undefined ) {
+			setShadow( inheritedShadow );
+			return;
+		}
+		setShadow( newValue );
 	};
 	const hasShadow = () => !! value?.shadow;
 	const resetShadow = () => setShadow( undefined );
@@ -271,6 +353,11 @@ export default function BorderPanel( {
 					panelId={ panelId }
 				>
 					<BorderBoxControl
+						className={
+							isBorderPlaceholder
+								? 'is-inherited-placeholder'
+								: undefined
+						}
 						colors={ colors }
 						enableAlpha
 						enableStyle={ showBorderStyle }
@@ -294,8 +381,14 @@ export default function BorderPanel( {
 					panelId={ panelId }
 				>
 					<BorderRadiusControl
+						className={
+							isBorderRadiusPlaceholder
+								? 'is-inherited-placeholder'
+								: undefined
+						}
+						placeholder={ borderRadiusPlaceholder }
 						presets={ settings?.border?.radiusSizes }
-						values={ borderRadiusValues }
+						values={ localBorderRadius }
 						onChange={ ( newValue ) => {
 							setBorderRadius( newValue || undefined );
 						} }
@@ -317,8 +410,13 @@ export default function BorderPanel( {
 					) : null }
 
 					<ShadowPopover
+						className={
+							isShadowPlaceholder
+								? 'is-inherited-placeholder'
+								: undefined
+						}
 						shadow={ shadow }
-						onShadowChange={ setShadow }
+						onShadowChange={ setShadowWithInheritedCommit }
 						settings={ settings }
 					/>
 				</ToolsPanelItem>

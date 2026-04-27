@@ -97,4 +97,30 @@
 		border-style: dashed;
 		border-color: var(--wp-block-synced-color);
 	}
+
+	// ShadowPopover dropdown toggle. The class lands on the
+	// `Dropdown` wrapper; the rule targets the toggle button it
+	// renders. Italic + synced-purple text + dashed border supplies
+	// the at-rest cue while the user has not yet committed a local
+	// shadow. The popover content (preset list) is portalled and is
+	// styled by the active-preset rule on `.is-active` items.
+	.block-editor-global-styles__shadow-dropdown-toggle {
+		color: var(--wp-block-synced-color);
+		font-style: italic;
+		border: 1px dashed var(--wp-block-synced-color);
+	}
+
+	// Compound BorderBoxControl. The class lands on the outer
+	// `BorderBoxControl` wrapper. The inner border-control rendered in
+	// linked mode is a width input + color swatch + style toggle; in
+	// split mode there are four such bundles. The input archetype rule
+	// above already covers the `<input>` placeholder text. Here we add
+	// a dashed border on the wrapping color swatch button so the user
+	// sees the at-rest cue on the swatch even when it carries the
+	// inherited color.
+	.components-border-control-dropdown__toggle-button,
+	.components-color-indicator {
+		border-style: dashed;
+		border-color: var(--wp-block-synced-color);
+	}
 }
