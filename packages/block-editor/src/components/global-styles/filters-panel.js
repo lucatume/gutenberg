@@ -164,8 +164,6 @@ const renderToggle = ( duotone, resetDuotone ) =>
 		);
 	};
 
-/** @typedef {import('./types').InheritedValue} InheritedValue */
-
 export default function FiltersPanel( {
 	as: Wrapper = FiltersToolsPanel,
 	value,
@@ -188,7 +186,11 @@ export default function FiltersPanel( {
 		presetSetting: 'palette',
 		defaultSetting: 'defaultPalette',
 	} );
-	const duotone = decodeValue( inheritedValue?.filter?.duotone );
+	const localDuotone = decodeValue( value?.filter?.duotone );
+	const inheritedDuotone = decodeValue( inheritedValue?.filter?.duotone );
+	const duotone = localDuotone ?? inheritedDuotone;
+	const isDuotonePlaceholder =
+		localDuotone === undefined && inheritedDuotone !== undefined;
 	const setDuotone = ( newValue ) => {
 		const duotonePreset = duotonePalette.find( ( { colors } ) => {
 			return colors === newValue;
@@ -199,6 +201,19 @@ export default function FiltersPanel( {
 		onChange(
 			setImmutably( value, [ 'filter', 'duotone' ], duotoneValue )
 		);
+	};
+	// Commit the inherited value when the user clicks the active preset
+	// while the picker is showing inherited duotone at rest.
+	const setDuotoneWithInheritedCommit = ( newValue ) => {
+		if (
+			newValue === undefined &&
+			isDuotonePlaceholder &&
+			inheritedDuotone !== undefined
+		) {
+			setDuotone( inheritedDuotone );
+			return;
+		}
+		setDuotone( newValue );
 	};
 	const hasDuotone = () => !! value?.filter?.duotone;
 	const resetDuotone = () => setDuotone( undefined );
@@ -230,7 +245,13 @@ export default function FiltersPanel( {
 				>
 					<Dropdown
 						popoverProps={ popoverProps }
-						className="block-editor-global-styles-filters-panel__dropdown"
+						className={ clsx(
+							'block-editor-global-styles-filters-panel__dropdown',
+							{
+								'is-inherited-placeholder':
+									isDuotonePlaceholder,
+							}
+						) }
 						renderToggle={ renderToggle( duotone, resetDuotone ) }
 						renderContent={ () => (
 							<DropdownContentWrapper paddingSize="small">
@@ -247,7 +268,9 @@ export default function FiltersPanel( {
 										disableCustomColors
 										disableCustomDuotone
 										value={ duotone }
-										onChange={ setDuotone }
+										onChange={
+											setDuotoneWithInheritedCommit
+										}
 									/>
 								</MenuGroup>
 							</DropdownContentWrapper>

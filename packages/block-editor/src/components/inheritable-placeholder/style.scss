@@ -110,6 +110,20 @@
 		border: 1px dashed var(--wp-block-synced-color);
 	}
 
+	// FiltersPanel duotone dropdown toggle. The class lands on the
+	// `Dropdown` wrapper; the rule targets the toggle button it
+	// renders. The button is the row showing the duotone swatch (or
+	// the unset-indicator) and the "Duotone" label. Italic +
+	// synced-purple text + dashed border render the synced at-rest
+	// cue; the inner `DuotoneSwatch` is itself a `ColorIndicator`
+	// and picks up its dashed-purple ring via the descendant
+	// `.components-color-indicator` rule below.
+	.block-editor-global-styles-filters-panel__dropdown-toggle {
+		color: var(--wp-block-synced-color);
+		font-style: italic;
+		border: 1px dashed var(--wp-block-synced-color);
+	}
+
 	// ColorPanelDropdown toggle. The class lands on the `Dropdown`
 	// wrapper; the rule targets the toggle button it renders. The
 	// button is the row that displays the swatch indicator(s) and the
