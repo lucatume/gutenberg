@@ -135,4 +135,54 @@
 		border-style: dashed;
 		border-color: var(--wp-block-synced-color);
 	}
+
+	// Background image dropdown toggle and inner image preview indicator.
+	// The toggle button is the row with the image preview thumbnail
+	// and label; we tint the label and dashed-border the toggle so
+	// the at-rest cue is visible without changing the image preview
+	// thumbnail itself. The image-indicator span is the small thumbnail;
+	// we ring it with dashed synced-purple to match the swatch treatment
+	// used by other preset-bearing controls.
+	.block-editor-global-styles-background-panel__dropdown-toggle {
+		color: var(--wp-block-synced-color);
+		font-style: italic;
+		border: 1px dashed var(--wp-block-synced-color);
+	}
+	.block-editor-global-styles-background-panel__inspector-image-indicator {
+		outline: 1px dashed var(--wp-block-synced-color);
+		outline-offset: 1px;
+	}
+
+	// FocalPointPicker (background position). The class lands on a
+	// wrapping div around the picker. The picker itself renders an
+	// image preview with a draggable marker; ring the picker
+	// container so the at-rest cue is visible at a glance without
+	// obscuring the marker. The picker's own internal handles and
+	// inputs are unaffected.
+	.block-editor-global-styles-background-panel__focal-point
+	.components-focal-point-picker__media {
+		outline: 1px dashed var(--wp-block-synced-color);
+		outline-offset: 2px;
+	}
+
+	// ToggleControl (Fixed background, Repeat). The class lands on
+	// the outermost wrapper. Tinting the label + the toggle's track
+	// signals at-rest. The track is a sibling pseudo-element of the
+	// hidden checkbox; descendant rules on the FormToggle subclass
+	// supply the dashed track.
+	.components-base-control__field {
+		.components-form-toggle .components-form-toggle__track {
+			border-style: dashed;
+			border-color: var(--wp-block-synced-color);
+		}
+		.components-form-toggle.is-checked
+		.components-form-toggle__track {
+			background-color: var(--wp-block-synced-color);
+		}
+		.components-toggle-control__label,
+		label.components-form-toggle__label {
+			color: var(--wp-block-synced-color);
+			font-style: italic;
+		}
+	}
 }

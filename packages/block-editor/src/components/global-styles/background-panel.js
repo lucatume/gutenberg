@@ -124,8 +124,6 @@ function BackgroundToolsPanel( {
 	);
 }
 
-/** @typedef {import('./types').InheritedValue} InheritedValue */
-
 export default function BackgroundImagePanel( {
 	as: Wrapper = BackgroundToolsPanel,
 	value,
@@ -263,16 +261,23 @@ export default function BackgroundImagePanel( {
 					hasValue={ () => hasBackgroundGradientValue( value ) }
 					resetValue={ resetGradient }
 					isShownByDefault={ defaultControls.gradient }
-					indicators={ [ currentGradient ] }
+					// Display the inherited gradient in the indicator while local is unset.
+					indicators={ [ currentGradient ?? inheritedGradient ] }
+					isPlaceholder={
+						currentGradient === undefined &&
+						inheritedGradient !== undefined
+					}
 					tabs={ [
 						{
 							key: 'gradient',
 							label: __( 'Gradient' ),
-							inheritedValue:
-								currentGradient ?? inheritedGradient,
+							inheritedValue: inheritedGradient,
 							setValue: setGradient,
 							userValue: currentGradient,
 							isGradient: true,
+							isPlaceholder:
+								currentGradient === undefined &&
+								inheritedGradient !== undefined,
 						},
 					] }
 					colorGradientControlSettings={ {
