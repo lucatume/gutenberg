@@ -49,6 +49,12 @@ const SitePreviewWidget = lazy( () => {
 	return importFromImportMap( 'wp/widgets/site-preview/render' );
 } );
 
+const SiteHealthWidget = lazy( () => {
+	// eslint-disable-next-line no-console
+	console.log( 'importing `site-health` widget' );
+	return importFromImportMap( 'wp/widgets/site-health/render' );
+} );
+
 const Widget = ( {
 	children,
 	isLoading,
@@ -99,6 +105,17 @@ function Dashboard() {
 				>
 					<Widget title={ __( 'Quick Draft' ) }>
 						<QuickDraftWidget />
+					</Widget>
+				</Suspense>
+				<Suspense
+					fallback={
+						<LoadingPlaceholder
+							title={ __( 'Site Health Status' ) }
+						/>
+					}
+				>
+					<Widget title={ __( 'Site Health Status' ) }>
+						<SiteHealthWidget />
 					</Widget>
 				</Suspense>
 				<Suspense fallback={ <LoadingPlaceholder /> }>
