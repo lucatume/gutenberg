@@ -46,9 +46,11 @@ const ActivityWidget = lazy( () => {
 const Widget = ( {
 	children,
 	isLoading,
+	title,
 }: {
-	children: React.ReactNode;
+	children?: React.ReactNode;
 	isLoading?: boolean;
+	title?: string;
 } ) => {
 	const className = clsx(
 		styles.widget,
@@ -57,21 +59,30 @@ const Widget = ( {
 
 	return (
 		<Card.Root className={ className }>
-			<Card.Content>{ children }</Card.Content>
+			{ title && <Card.Header>{ title }</Card.Header> }
+			{ children && <Card.Content>{ children }</Card.Content> }
 		</Card.Root>
 	);
 };
 
-const LoadingPlaceholder = () => {
-	return <Widget isLoading>{ __( 'Loading widget…' ) }</Widget>;
+const LoadingPlaceholder = ( { title }: { title?: string } ) => {
+	return (
+		<Widget title={ title } isLoading>
+			{ __( 'Loading widget…' ) }
+		</Widget>
+	);
 };
 
 function Dashboard() {
 	return (
 		<Page title={ __( 'Dashboard' ) }>
 			<div className={ styles.widgets }>
-				<Suspense fallback={ <LoadingPlaceholder /> }>
-					<Widget>
+				<Suspense
+					fallback={
+						<LoadingPlaceholder title={ __( 'Activity' ) } />
+					}
+				>
+					<Widget title={ __( 'Activity' ) }>
 						<ActivityWidget />
 					</Widget>
 				</Suspense>
