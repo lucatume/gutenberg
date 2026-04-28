@@ -19,7 +19,7 @@ import styles from './style.module.css';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // TEMPORARY DEMO — DELETE WHEN THE WIDGET RENDERING ENGINE LANDS.
-// This file hardcodes a single widget (`hello-world`) behind a Suspense
+// This file hardcodes widgets behind a Suspense
 // boundary just to prove the end-to-end pipeline (wp-build → script module →
 // import map → dynamic import). The real implementation will ship a generic
 // widget renderer driven by layout state, not a hardcoded import.
@@ -30,12 +30,6 @@ const importFromImportMap = new Function(
 	'specifier',
 	'return import( specifier );'
 ) as ( specifier: string ) => Promise< { default: ComponentType } >;
-
-const HelloWorldWidget = lazy( () => {
-	// eslint-disable-next-line no-console
-	console.log( 'importing `hello-world` widget' );
-	return importFromImportMap( 'wp/widgets/hello-world/render' );
-} );
 
 const ActivityWidget = lazy( () => {
 	// eslint-disable-next-line no-console
@@ -107,18 +101,9 @@ function Dashboard() {
 						<QuickDraftWidget />
 					</Widget>
 				</Suspense>
-				<Suspense
-					fallback={
-						<LoadingPlaceholder title={ __( 'Site Preview' ) } />
-					}
-				>
-					<Widget title={ __( 'Site Preview' ) }>
-						<SitePreviewWidget />
-					</Widget>
-				</Suspense>
 				<Suspense fallback={ <LoadingPlaceholder /> }>
 					<Widget>
-						<HelloWorldWidget />
+						<SitePreviewWidget />
 					</Widget>
 				</Suspense>
 			</div>
