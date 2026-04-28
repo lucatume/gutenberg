@@ -26,10 +26,19 @@ const HelloWorldWidget = lazy( () => {
 	return importFromImportMap( 'wp/widgets/hello-world/render' );
 } );
 
+const ActivityWidget = lazy( () => {
+	// eslint-disable-next-line no-console
+	console.log( 'importing `activity` widget' );
+	return importFromImportMap( 'wp/widgets/activity/render' );
+} );
+
 function Dashboard() {
 	return (
 		<Page title={ __( 'Dashboard' ) }>
 			<div className="dashboard-widgets">
+				<Suspense fallback={ <p>{ __( 'Loading widget…' ) }</p> }>
+					<ActivityWidget />
+				</Suspense>
 				<Suspense fallback={ <p>{ __( 'Loading widget…' ) }</p> }>
 					<HelloWorldWidget />
 				</Suspense>
