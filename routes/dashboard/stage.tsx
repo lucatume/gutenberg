@@ -43,6 +43,12 @@ const ActivityWidget = lazy( () => {
 	return importFromImportMap( 'wp/widgets/activity/render' );
 } );
 
+const QuickDraftWidget = lazy( () => {
+	// eslint-disable-next-line no-console
+	console.log( 'importing `quick-draft` widget' );
+	return importFromImportMap( 'wp/widgets/quick-draft/render' );
+} );
+
 const Widget = ( {
 	children,
 	isLoading,
@@ -84,6 +90,15 @@ function Dashboard() {
 				>
 					<Widget title={ __( 'Activity' ) }>
 						<ActivityWidget />
+					</Widget>
+				</Suspense>
+				<Suspense
+					fallback={
+						<LoadingPlaceholder title={ __( 'Quick Draft' ) } />
+					}
+				>
+					<Widget title={ __( 'Quick Draft' ) }>
+						<QuickDraftWidget />
 					</Widget>
 				</Suspense>
 				<Suspense fallback={ <LoadingPlaceholder /> }>
