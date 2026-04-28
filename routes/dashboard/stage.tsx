@@ -1,10 +1,21 @@
 /**
+ * External dependencies
+ */
+import clsx from 'clsx';
+
+/**
  * WordPress dependencies
  */
 import { Page } from '@wordpress/admin-ui';
 import { __ } from '@wordpress/i18n';
 import { lazy, Suspense } from '@wordpress/element';
+import { Card } from '@wordpress/ui';
 import type { ComponentType } from '@wordpress/element';
+
+/**
+ * Internal dependencies
+ */
+import styles from './style.module.css';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // TEMPORARY DEMO — DELETE WHEN THE WIDGET RENDERING ENGINE LANDS.
@@ -32,15 +43,42 @@ const ActivityWidget = lazy( () => {
 	return importFromImportMap( 'wp/widgets/activity/render' );
 } );
 
+const Widget = ( {
+	children,
+	isLoading,
+}: {
+	children: React.ReactNode;
+	isLoading?: boolean;
+} ) => {
+	const className = clsx(
+		styles.widget,
+		isLoading && styles[ 'is-loading' ]
+	);
+
+	return (
+		<Card.Root className={ className }>
+			<Card.Content>{ children }</Card.Content>
+		</Card.Root>
+	);
+};
+
+const LoadingPlaceholder = () => {
+	return <Widget isLoading>{ __( 'Loading widget…' ) }</Widget>;
+};
+
 function Dashboard() {
 	return (
 		<Page title={ __( 'Dashboard' ) }>
-			<div className="dashboard-widgets">
-				<Suspense fallback={ <p>{ __( 'Loading widget…' ) }</p> }>
-					<ActivityWidget />
+			<div className={ styles.widgets }>
+				<Suspense fallback={ <LoadingPlaceholder /> }>
+					<Widget>
+						<ActivityWidget />
+					</Widget>
 				</Suspense>
-				<Suspense fallback={ <p>{ __( 'Loading widget…' ) }</p> }>
-					<HelloWorldWidget />
+				<Suspense fallback={ <LoadingPlaceholder /> }>
+					<Widget>
+						<HelloWorldWidget />
+					</Widget>
 				</Suspense>
 			</div>
 		</Page>

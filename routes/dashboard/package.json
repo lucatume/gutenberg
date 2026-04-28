@@ -16,6 +16,8 @@
 		"@wordpress/element": "file:../../packages/element",
 		"@wordpress/hooks": "file:../../packages/hooks",
 		"@wordpress/i18n": "file:../../packages/i18n",
-		"@wordpress/warning": "file:../../packages/warning"
+		"@wordpress/ui": "file:../../packages/ui",
+		"@wordpress/warning": "file:../../packages/warning",
+		"clsx": "^2.1.1"
 	}
 }
