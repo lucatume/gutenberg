@@ -17,7 +17,7 @@ import {
 import { __, sprintf } from '@wordpress/i18n';
 import { store as coreDataStore } from '@wordpress/core-data';
 import { privateApis as blockLibraryPrivateApis } from '@wordpress/block-library';
-import { useCallback } from '@wordpress/element';
+import { useCallback, useMemo } from '@wordpress/element';
 import { store as noticesStore } from '@wordpress/notices';
 import { privateApis as routerPrivateApis } from '@wordpress/router';
 import { decodeEntities } from '@wordpress/html-entities';
@@ -122,7 +122,7 @@ export default function EditSiteEditor( { isHomeRoute = false } ) {
 	const entity = useResolveEditedEntity();
 	// deprecated sync state with url
 	useSyncDeprecatedEntityIntoState( entity );
-	const { postType, postId, context } = entity;
+	const { postType, postId, context, innerTemplateId } = entity;
 	const { isBlockBasedTheme, hasSiteIcon } = useSelect( ( select ) => {
 		const { getCurrentTheme, getEntityRecord } = select( coreDataStore );
 		const siteData = getEntityRecord( 'root', '__unstableBase', undefined );
@@ -145,7 +145,20 @@ export default function EditSiteEditor( { isHomeRoute = false } ) {
 		'edit-site-editor__loading-progress'
 	);
 
-	const editorSettings = useSpecificEditorSettings();
+	const baseEditorSettings = useSpecificEditorSettings();
+	const editorSettings = useMemo(
+		() => ( {
+			...baseEditorSettings,
+			__experimentalRootInnerTemplateId: innerTemplateId,
+			// When the canvas is wrapping an inner template inside `root`,
+			// lock the root chrome so users can only edit the inner template
+			// (rendered by `core/template-content`).
+			templateLock: innerTemplateId
+				? 'all'
+				: baseEditorSettings.templateLock,
+		} ),
+		[ baseEditorSettings, innerTemplateId ]
+	);
 	const { resetZoomLevel } = unlock( useDispatch( blockEditorStore ) );
 	const { setCurrentRevisionId } = unlock( useDispatch( editorStore ) );
 	const { createSuccessNotice } = useDispatch( noticesStore );
