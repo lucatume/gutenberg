@@ -13,6 +13,7 @@ import {
 	useMemo,
 	useRef,
 	useEffect,
+	useLayoutEffect,
 	forwardRef,
 } from '@wordpress/element';
 import { __ } from '@wordpress/i18n';
@@ -29,6 +30,7 @@ import type {
 import type { UseCropperStateReturn } from '../hooks/use-cropper-state';
 import { getImageFit } from '../../core/camera';
 import { getImageCropBounds } from '../../core/containment';
+import type { CropperLayoutGeometry } from '../../core/crop-geometry';
 import { useInteraction } from '../hooks/use-interaction';
 import { useTransformStyle } from '../hooks/use-transform-style';
 import { useAriaAnnouncer } from '../hooks/use-aria-announcer';
@@ -36,6 +38,7 @@ import { RectangleStencil } from './stencils/rectangle-stencil';
 import { DimmingOverlay } from './overlays/dimming-overlay';
 import { GridOverlay } from './overlays/grid-overlay';
 import { ViewportProvider, useViewport } from './viewport-provider';
+import { useOptionalSetCropperGeometry } from './cropper-provider';
 import './cropper.scss';
 
 /** Threshold for comparing normalized crop rect values. */
@@ -70,6 +73,41 @@ function computeInscribedRect(
 		width: w,
 		height: h,
 	};
+}
+
+function areSizesEqual( a: Size, b: Size ): boolean {
+	return a.width === b.width && a.height === b.height;
+}
+
+function areCropBoundsEqual(
+	a: CropperLayoutGeometry[ 'cropBounds' ],
+	b: CropperLayoutGeometry[ 'cropBounds' ]
+): boolean {
+	if ( a === b ) {
+		return true;
+	}
+	if ( ! a || ! b ) {
+		return false;
+	}
+	return (
+		a.minX === b.minX &&
+		a.minY === b.minY &&
+		a.maxX === b.maxX &&
+		a.maxY === b.maxY
+	);
+}
+
+function areLayoutGeometriesEqual(
+	a: CropperLayoutGeometry | null,
+	b: CropperLayoutGeometry
+): boolean {
+	return !! (
+		a &&
+		areSizesEqual( a.canvasSize, b.canvasSize ) &&
+		areSizesEqual( a.elementSize, b.elementSize ) &&
+		areSizesEqual( a.visualSize, b.visualSize ) &&
+		areCropBoundsEqual( a.cropBounds, b.cropBounds )
+	);
 }
 
 /**
@@ -175,6 +213,7 @@ function CropperInner(
 		setViewportPan,
 		resetViewport,
 	} = useViewport();
+	const setCropperGeometry = useOptionalSetCropperGeometry();
 	// Canvas measurement via ResizeObserver. The canvas is the inner
 	// positioning context for image/stencil/handles — inset from the root
 	// by the handle gutter, so crop math operates on the reduced box.
@@ -285,6 +324,32 @@ function CropperInner(
 	const [ isResizing, setIsResizing ] = useState( false );
 	const isResizingRef = useRef( false );
 	const isSettlingRef = useRef( false );
+
+	useLayoutEffect( () => {
+		const nextGeometry: CropperLayoutGeometry = {
+			canvasSize,
+			elementSize,
+			visualSize,
+			cropBounds,
+		};
+		setCropperGeometry( ( current ) =>
+			areLayoutGeometriesEqual( current, nextGeometry )
+				? current
+				: nextGeometry
+		);
+	}, [
+		canvasSize,
+		elementSize,
+		visualSize,
+		cropBounds,
+		setCropperGeometry,
+	] );
+
+	useLayoutEffect( () => {
+		return () => {
+			setCropperGeometry( null );
+		};
+	}, [ setCropperGeometry ] );
 
 	// Use the interaction hook for mouse, touch, and keyboard events.
 	const {
