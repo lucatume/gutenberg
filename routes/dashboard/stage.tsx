@@ -55,6 +55,12 @@ const SiteHealthWidget = lazy( () => {
 	return importFromImportMap( 'wp/widgets/site-health/render' );
 } );
 
+const WelcomeWidget = lazy( () => {
+	// eslint-disable-next-line no-console
+	console.log( 'importing `welcome` widget' );
+	return importFromImportMap( 'wp/widgets/welcome/render' );
+} );
+
 const Widget = ( {
 	children,
 	isLoading,
@@ -89,6 +95,15 @@ function Dashboard() {
 	return (
 		<Page title={ __( 'Dashboard' ) }>
 			<div className={ styles.widgets }>
+				<Suspense
+					fallback={
+						<LoadingPlaceholder title={ __( 'Welcome' ) } />
+					}
+				>
+					<Widget>
+						<WelcomeWidget />
+					</Widget>
+				</Suspense>
 				<Suspense
 					fallback={
 						<LoadingPlaceholder title={ __( 'Activity' ) } />
