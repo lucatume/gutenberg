@@ -11,6 +11,10 @@
 -   `Drawer`: Fade the popup elevation shadow alongside the slide ([#77800](https://github.com/WordPress/gutenberg/pull/77800)).
 -   `Drawer`: Allow mouse-drag swipe-dismiss in the popup-edge padding gutter ([#77800](https://github.com/WordPress/gutenberg/pull/77800)).
 
+### Internal
+
+-   Add internal `getOverlayPrimeSlot()` helper and a co-located unlayered CSS module that lazily creates a body-level `[data-wp-overlay-prime]` container at z-index `1000000003` when `window.__wpUiOverlayPrimeSlotEnabled` is `true`. Ships dormant (no consumers) and is a no-op for any external `@wordpress/ui` consumer.
+
 ## 0.12.0 (2026-04-29)
 
 ### Breaking Changes

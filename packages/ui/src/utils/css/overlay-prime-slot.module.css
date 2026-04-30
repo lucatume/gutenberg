@@ -1,0 +1,67 @@
+/*
+ * Overlay prime slot — body-level positioned container for `@wordpress/ui`
+ * leaf overlays (Tooltip, Select, Combobox, Autocomplete, Menu) that need to
+ * stack above all `@wordpress/components` overlays in mixed-library
+ * compositions.
+ *
+ * The `data-wp-overlay-prime` attribute is the architectural identifier for
+ * the slot (see `getOverlayPrimeSlot()`); the `.slot` class is the styling
+ * vehicle. Anything that lazy-creates an instance of this slot must apply
+ * equivalent rules.
+ *
+ * Authored unlayered — outside `@layer wp-ui-*` — so the slot's z-index and
+ * positioning win against any `@layer`-scoped rule that might otherwise try
+ * to redefine them. CSS cascade layers always lose to unlayered styles, so
+ * unlayering is the ceiling.
+ *
+ * Why each declaration is what it is:
+ *
+ * - `z-index: 1000000003` — sits in a separate, reserved billion-scale
+ *   band above every `@wordpress/components` overlay z-index. The
+ *   highest of those is Tooltip at `1000002`; the slot is not numerically
+ *   adjacent to it but rather an order of magnitude clear of the entire
+ *   `@wordpress/components` overlay range. A follow-up bumps
+ *   `.components-draggable__clone` to `1000000004` so an active drag
+ *   stays one above the slot.
+ *
+ * - `position: fixed` — load-bearing for two independent reasons:
+ *
+ *   1. `z-index` is ignored on `position: static` elements. The slot needs
+ *      to be positioned for the `1000000003` value to apply at all.
+ *   2. Any non-static position makes the slot a containing block for its
+ *      absolute-positioned descendants. Base UI overlay positioners use
+ *      `positionMethod: 'absolute'` by default, and floating-ui writes
+ *      physical viewport-relative `top` / `left` coordinates onto the
+ *      floating element. For those coordinates to land correctly, the
+ *      containing block must sit at viewport `(0, 0)`. `position: fixed`
+ *      (with `top: 0; left: 0`) pins the slot there regardless of scroll;
+ *      `position: relative` would anchor at body's flow position (offset
+ *      by body's margin/padding) and silently break popover positioning.
+ *
+ * - `top: 0; left: 0` — physical, intentionally not logical. Floating-ui
+ *   writes physical viewport pixels onto the floating element, so the
+ *   containing block has to sit at the *physical* viewport origin.
+ *   `inset-inline-start: 0` would resolve to `right: 0` in RTL, anchoring
+ *   the (zero-width) slot at the viewport's top-right corner; an absolute
+ *   child with `left: 200px` would then resolve at viewport-width + 200px,
+ *   off the right edge of the screen. Same hazard for `inset-block-start`
+ *   under vertical writing modes.
+ *
+ * - `isolation: isolate` — strictly redundant once `position: fixed` and
+ *   `z-index` are set (a positioned element with a non-`auto` z-index
+ *   already establishes a stacking context). Kept as an explicit
+ *   declaration of intent: this element is a stacking-context boundary,
+ *   independent of how it happens to be positioned.
+ *
+ * The slot has zero content size, so it never intercepts pointer events on
+ * its own.
+ */
+
+.slot {
+	position: fixed;
+	top: 0;
+	/* stylelint-disable-next-line plugin/use-logical-properties-and-values -- Physical anchoring required so floating-ui's viewport-relative coordinates resolve correctly; see file header for reasoning. */
+	left: 0;
+	z-index: 1000000003;
+	isolation: isolate;
+}
