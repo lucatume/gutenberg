@@ -61,6 +61,12 @@ const WelcomeWidget = lazy( () => {
 	return importFromImportMap( 'wp/widgets/welcome/render' );
 } );
 
+const EventsNewsWidget = lazy( () => {
+	// eslint-disable-next-line no-console
+	console.log( 'importing `events-news` widget' );
+	return importFromImportMap( 'wp/widgets/events-news/render' );
+} );
+
 const Widget = ( {
 	children,
 	isLoading,
@@ -131,6 +137,17 @@ function Dashboard() {
 				>
 					<Widget title={ __( 'Site Health Status' ) }>
 						<SiteHealthWidget />
+					</Widget>
+				</Suspense>
+				<Suspense
+					fallback={
+						<LoadingPlaceholder
+							title={ __( 'WordPress Events and News' ) }
+						/>
+					}
+				>
+					<Widget title={ __( 'WordPress Events and News' ) }>
+						<EventsNewsWidget />
 					</Widget>
 				</Suspense>
 				<Suspense fallback={ <LoadingPlaceholder /> }>
