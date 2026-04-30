@@ -5,6 +5,7 @@
 ### Enhancements
 
 -   `Menu`: Remove `cursor: not-allowed` and added pointer styles to menu ([#70412](https://github.com/WordPress/gutenberg/pull/70412))
+-   `BoxControl`: per-side `BoxInputControl` now falls back to a user-supplied `placeholder` prop when the dynamic mixed-side placeholder is not in use, so consumers can supply a fallback placeholder string (for example to surface an inherited Global Styles value).
 
 ### Breaking Changes
 
