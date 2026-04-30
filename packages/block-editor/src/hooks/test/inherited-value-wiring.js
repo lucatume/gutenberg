@@ -4,9 +4,10 @@
 import { render } from '@testing-library/react';
 
 /**
- * Task 3 wires `InheritedValueProvider` + `useInheritedValue` into each
- * inspector hook wrapper so the shared global-styles panels receive a
- * real merged placeholder payload. These tests cover two concerns:
+ * Tests the Provider wiring between inspector hook wrappers and shared
+ * Global Styles panels.
+ *
+ * These tests cover two concerns:
  *
  *   1. The panel-level `useOwnVariation` hook correctly maps a block's
  *      `className` to a registered variation slug (or `null`).
@@ -16,7 +17,7 @@ import { render } from '@testing-library/react';
  *
  * The full shared-panel render tree (ToolsPanel machinery,
  * `InspectorControls` slot-fill, data store, etc.) is intentionally
- * mocked out so each test exercises only the new wiring contract.
+ * mocked out so each test exercises only the wiring contract.
  */
 
 // Jest hoists `jest.mock` factories; proxies for spies need to satisfy
@@ -82,7 +83,7 @@ jest.mock( '../../components/global-styles/background-panel', () => ( {
 
 // Stub the minimal `@wordpress/data` surface the wrappers call into
 // directly. The real store + persistence machinery is intentionally
-// elided — Task 3's contract is testable on the prop plumbing alone.
+// elided. The prop plumbing is testable with the mocked selector surface.
 jest.mock( '@wordpress/data', () => ( {
 	__esModule: true,
 	useSelect: jest.fn(),
@@ -117,7 +118,7 @@ jest.mock( '@wordpress/blocks', () => ( {
 // on unrecognised objects. The wrappers unlock dispatchers and
 // selectors returned by the mocked `@wordpress/data` stubs, which do
 // not carry the private-API marker. Short-circuit to a passthrough so
-// these tests can exercise the new Task 3 wiring without threading
+// these tests can exercise the wrapper wiring without threading
 // the full private-API handshake through every stub.
 jest.mock( '@wordpress/private-apis', () => ( {
 	__esModule: true,
@@ -186,8 +187,7 @@ beforeEach( () => {
 // pure helper `getVariationNameFromClass`, which has direct coverage
 // in the existing `block-style-variation` module. The wrapper tests
 // below verify that each hook wrapper passes the hook's return value
-// through to `InheritedValueProvider` as `ownVariation`, which is the
-// contract Task 3 introduces.
+// through to `InheritedValueProvider` as `ownVariation`.
 
 describe( 'inspector hook wrappers thread inheritedValue through the Provider', () => {
 	test( 'TypographyPanel mounts the Provider with the block name and threads inheritedValue', () => {

@@ -522,3 +522,190 @@ describe( 'useInheritedValue / InheritedValueProvider', () => {
 		expect( screen.getByTestId( 'probe' ) ).toHaveTextContent( '{}' );
 	} );
 } );
+
+/**
+ * Regression suite for the production data-shape contract.
+ *
+ * `settings[ globalStylesDataKey ]` carries the BARE merged Global
+ * Styles tree — `{ typography: {...}, color: {...}, blocks: {...},
+ * elements: {...}, ... }` — produced by
+ * `editor/src/components/provider/use-block-editor-settings.js:237`
+ * (`mergedGlobalStyles.styles`). It is NOT the wrapped
+ * `{ settings, styles }` envelope.
+ *
+ * Pre-hot-fix, the Provider passed the bare tree directly to
+ * `buildInheritedValue`, which destructures `const { styles } =
+ * globalStyles` and so saw `undefined` and early-returned `{}`. Every
+ * panel got an empty `inheritedValue`; nothing surfaced in the
+ * inspector. None of the original suites caught it because their
+ * fixtures all set `[ globalStylesDataKey ]: { styles: { ... } }` —
+ * encoding the wrong shape assumption.
+ *
+ * This suite uses fixtures that mirror the production producer's
+ * output and asserts the Provider → builder pipeline yields a
+ * non-empty `inheritedValue` end-to-end. A future regression on the
+ * data-shape contract — at the producer, the wrapping step inside the
+ * Provider, or the builder's destructure — surfaces here in CI.
+ */
+describe( 'Provider integration: production bare-tree shape', () => {
+	beforeEach( () => {
+		useSelect.mockReset();
+	} );
+
+	function Probe( { element } ) {
+		const v = useInheritedValue( element ? { element } : undefined );
+		return <div data-testid="probe">{ JSON.stringify( v ) }</div>;
+	}
+
+	/**
+	 * Representative bare-tree fixture shaped like a real
+	 * `mergedGlobalStyles.styles` payload from a child theme that:
+	 *
+	 *   - Sets a root text color, body background, and root line height.
+	 *   - Overrides `core/heading` with a font-family + weight.
+	 *   - Overrides the `h2` element specifically with a smaller
+	 *     font size and a different color.
+	 *   - Registers a `plain` variation under `core/quote` that
+	 *     drops the border and recolors the text.
+	 *   - Includes a `{ ref: 'color.background' }` envelope on the
+	 *     `core/group` background to verify ref resolution still
+	 *     works end-to-end (ref envelopes resolve against the bare
+	 *     tree directly, not the wrapped one).
+	 */
+	const productionShapeFixture = {
+		typography: { lineHeight: '1.6' },
+		color: {
+			text: '#1a1a1a',
+			background: '#ffffff',
+		},
+		elements: {
+			link: { color: { text: '#0073aa' } },
+		},
+		blocks: {
+			'core/heading': {
+				typography: {
+					fontFamily: 'serif',
+					fontWeight: '600',
+				},
+				elements: {
+					h2: {
+						typography: { fontSize: '28px' },
+						color: { text: '#444444' },
+					},
+				},
+			},
+			'core/quote': {
+				border: { width: '4px', color: '#cccccc' },
+				variations: {
+					plain: {
+						border: { width: '0px' },
+						color: { text: '#666666' },
+					},
+				},
+			},
+			'core/group': {
+				color: { background: { ref: 'color.background' } },
+			},
+		},
+	};
+
+	function mountWithFixture( ui, rawGlobalStyles = productionShapeFixture ) {
+		useSelect.mockImplementation( ( mapSelect ) =>
+			mapSelect( () => ( {
+				getSettings: () => ( {
+					[ globalStylesDataKey ]: rawGlobalStyles,
+				} ),
+			} ) )
+		);
+		return render( ui );
+	}
+
+	test( 'root + block override merge yields non-empty payload at the panel boundary', () => {
+		mountWithFixture(
+			<InheritedValueProvider blockName="core/heading">
+				<Probe />
+			</InheritedValueProvider>
+		);
+		const parsed = JSON.parse( screen.getByTestId( 'probe' ).textContent );
+		expect( parsed ).toMatchObject( {
+			typography: {
+				lineHeight: '1.6', // from root layer
+				fontFamily: 'serif', // from block override
+				fontWeight: '600', // from block override
+			},
+			color: { text: '#1a1a1a' }, // from root layer
+		} );
+	} );
+
+	test( 'element-folded read sees the h2-specific override + root passthrough', () => {
+		mountWithFixture(
+			<InheritedValueProvider blockName="core/heading">
+				<Probe element="h2" />
+			</InheritedValueProvider>
+		);
+		const parsed = JSON.parse( screen.getByTestId( 'probe' ).textContent );
+		expect( parsed.typography.fontSize ).toBe( '28px' ); // h2 override wins
+		expect( parsed.typography.lineHeight ).toBe( '1.6' ); // root passthrough
+		expect( parsed.color.text ).toBe( '#444444' ); // h2 override wins over root
+	} );
+
+	test( 'variation override layers on top of block override', () => {
+		mountWithFixture(
+			<InheritedValueProvider blockName="core/quote" ownVariation="plain">
+				<Probe />
+			</InheritedValueProvider>
+		);
+		const parsed = JSON.parse( screen.getByTestId( 'probe' ).textContent );
+		expect( parsed.border.width ).toBe( '0px' ); // variation wins
+		expect( parsed.border.color ).toBe( '#cccccc' ); // block passthrough
+		expect( parsed.color.text ).toBe( '#666666' ); // variation wins
+	} );
+
+	test( '{ ref } envelope resolves against the bare tree at the leaf', () => {
+		mountWithFixture(
+			<InheritedValueProvider blockName="core/group">
+				<Probe />
+			</InheritedValueProvider>
+		);
+		const parsed = JSON.parse( screen.getByTestId( 'probe' ).textContent );
+		expect( parsed.color.background ).toBe( '#ffffff' );
+	} );
+
+	test( 'block with no overrides still inherits root + element layers', () => {
+		mountWithFixture(
+			<InheritedValueProvider blockName="core/paragraph">
+				<Probe element="link" />
+			</InheritedValueProvider>
+		);
+		const parsed = JSON.parse( screen.getByTestId( 'probe' ).textContent );
+		expect( parsed.typography.lineHeight ).toBe( '1.6' );
+		// element fold for `link` brings in the root.elements.link override.
+		expect( parsed.color.text ).toBe( '#0073aa' );
+	} );
+
+	test( 'panel-readable keys are absent when the producer accidentally double-wraps the data', () => {
+		// Regression guard against re-introducing the original bug. If
+		// a future refactor accidentally double-wraps the data —
+		// i.e. stores `{ styles: { typography: ... } }` at the dataKey
+		// instead of the bare tree — the Provider's wrapper produces
+		// `{ styles: { styles: { typography: ... } } }`, the builder
+		// destructures `styles = { styles: { typography: ... } }`, and
+		// `pickLayerRootContribution` treats `styles` as a leaf-bearing
+		// key so the merged payload is `{ styles: { typography: ... } }`
+		// — non-empty in object terms, but the panel-readable keys
+		// (`typography`, `color`, ...) are absent at the top level. The
+		// user observes the same thing they did before the hot fix: no
+		// inherited values surface in the inspector. This case asserts
+		// the panel-readable keys are missing, which is what the panels
+		// actually consume.
+		mountWithFixture(
+			<InheritedValueProvider blockName="core/heading">
+				<Probe />
+			</InheritedValueProvider>,
+			{ styles: productionShapeFixture }
+		);
+		const parsed = JSON.parse( screen.getByTestId( 'probe' ).textContent );
+		expect( parsed.typography ).toBeUndefined();
+		expect( parsed.color ).toBeUndefined();
+	} );
+} );
