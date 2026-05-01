@@ -317,6 +317,24 @@ export default function PageTemplates() {
 		}
 	} );
 
+	// If the active theme has a `root.html`, opening any other template from
+	// this list should drop the user into focus mode — they're editing one
+	// template in isolation, the same way clicking a template part opens its
+	// own focused canvas.
+	const { hasRootTemplate, rootTemplateId } = useSelect( ( select ) => {
+		const { getCurrentTheme, getEntityRecord } = select( coreStore );
+		const stylesheet = getCurrentTheme()?.stylesheet;
+		if ( ! stylesheet ) {
+			return { hasRootTemplate: false, rootTemplateId: null };
+		}
+		const id = `${ stylesheet }//root`;
+		const root = getEntityRecord( 'postType', TEMPLATE_POST_TYPE, id );
+		return {
+			hasRootTemplate: !! root,
+			rootTemplateId: id,
+		};
+	}, [] );
+
 	const duplicateAction = actions.find(
 		( action ) => action.id === 'duplicate-post'
 	);
@@ -344,7 +362,22 @@ export default function PageTemplates() {
 						setSelectedRegisteredTemplate( item );
 					} else {
 						history.navigate(
-							`/${ item.type }/${ item.id }?canvas=edit`
+							addQueryArgs(
+								`/${ item.type }/${ item.id }`,
+								{
+									canvas: 'edit',
+									// When the active theme has a `root.html`,
+									// every other template is edited in focus
+									// mode (matching how `core/template-part`
+									// is edited). Root itself stays in the
+									// regular full-canvas editor.
+									...( hasRootTemplate &&
+									item.type === TEMPLATE_POST_TYPE &&
+									item.id !== rootTemplateId
+										? { focusMode: true }
+										: {} ),
+								}
+							)
 						);
 					}
 				} }

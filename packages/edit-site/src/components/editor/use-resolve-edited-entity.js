@@ -72,25 +72,6 @@ export function useResolveEditedEntity() {
 		return getHomePage();
 	}, [] );
 
-	// Resolve the active theme's `root` template id (if any). This drives the
-	// "root template" wrapping behavior: any other template the user opens is
-	// rendered inside `root`, with the `core/template-content` block resolving
-	// to the originally requested template.
-	const rootTemplate = useSelect( ( select ) => {
-		const { getCurrentTheme, getEntityRecord } = select( coreDataStore );
-		const stylesheet = getCurrentTheme()?.stylesheet;
-		if ( ! stylesheet ) {
-			return null;
-		}
-		return (
-			getEntityRecord(
-				'postType',
-				TEMPLATE_POST_TYPE,
-				`${ stylesheet }//root`
-			) ?? null
-		);
-	}, [] );
-
 	/**
 	 * This is a hook that recreates the logic to resolve a template for a given WordPress postID postTypeId
 	 * in order to match the frontend as closely as possible in the site editor.
@@ -167,25 +148,6 @@ export function useResolveEditedEntity() {
 		};
 	} else {
 		entity = { isReady: false };
-	}
-
-	// Root template wrapping: if a `root` template exists in the active theme
-	// and we are about to render a different wp_template, swap the rendered
-	// entity to `root` and expose the originally-requested id as
-	// `innerTemplateId`. The `core/template-content` block reads it via the
-	// block-editor settings to render the inner template editably.
-	if (
-		entity.isReady &&
-		entity.postType === TEMPLATE_POST_TYPE &&
-		rootTemplate &&
-		entity.postId &&
-		entity.postId !== rootTemplate.id
-	) {
-		entity = {
-			...entity,
-			postId: rootTemplate.id,
-			innerTemplateId: entity.postId,
-		};
 	}
 
 	// Restore selection from URL synchronously, before EditorProvider renders.

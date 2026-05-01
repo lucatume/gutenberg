@@ -4,7 +4,11 @@
 import { Page } from '@wordpress/admin-ui';
 import { __ } from '@wordpress/i18n';
 import { useState, useMemo, useCallback } from '@wordpress/element';
-import { privateApis as corePrivateApis } from '@wordpress/core-data';
+import {
+	privateApis as corePrivateApis,
+	store as coreStore,
+} from '@wordpress/core-data';
+import { useSelect } from '@wordpress/data';
 import { DataViews, filterSortAndPaginate } from '@wordpress/dataviews';
 import { privateApis as routerPrivateApis } from '@wordpress/router';
 import { privateApis as editorPrivateApis } from '@wordpress/editor';
@@ -132,6 +136,24 @@ export default function PageTemplates() {
 		}
 	} );
 
+	// If the active theme has a `root.html`, opening any other template from
+	// this list should drop the user into focus mode — they're editing one
+	// template in isolation, the same way clicking a template part opens its
+	// own focused canvas.
+	const { hasRootTemplate, rootTemplateId } = useSelect( ( select ) => {
+		const { getCurrentTheme, getEntityRecord } = select( coreStore );
+		const stylesheet = getCurrentTheme()?.stylesheet;
+		if ( ! stylesheet ) {
+			return { hasRootTemplate: false, rootTemplateId: null };
+		}
+		const id = `${ stylesheet }//root`;
+		const root = getEntityRecord( 'postType', TEMPLATE_POST_TYPE, id );
+		return {
+			hasRootTemplate: !! root,
+			rootTemplateId: id,
+		};
+	}, [] );
+
 	return (
 		<Page
 			className="edit-site-page-templates"
@@ -151,7 +173,19 @@ export default function PageTemplates() {
 				onChangeSelection={ onChangeSelection }
 				isItemClickable={ () => true }
 				onClickItem={ ( { id } ) => {
-					history.navigate( `/wp_template/${ id }?canvas=edit` );
+					history.navigate(
+						addQueryArgs( `/wp_template/${ id }`, {
+							canvas: 'edit',
+							// When the active theme has a `root.html`, every
+							// other template is edited in focus mode so the
+							// canvas is just that template — same behaviour as
+							// editing a `core/template-part`. Root itself
+							// stays in the regular full-canvas editor.
+							...( hasRootTemplate && id !== rootTemplateId
+								? { focusMode: true }
+								: {} ),
+						} )
+					);
 				} }
 				selection={ selection }
 				defaultLayouts={ defaultLayouts }

@@ -1,7 +1,6 @@
 /**
  * WordPress dependencies
  */
-import { layout as icon } from '@wordpress/icons';
 import { addFilter } from '@wordpress/hooks';
 import { select } from '@wordpress/data';
 import { store as coreStore } from '@wordpress/core-data';
@@ -12,11 +11,17 @@ import { store as coreStore } from '@wordpress/core-data';
 import initBlock from '../utils/init-block';
 import metadata from './block.json';
 import edit from './edit';
+import icon from './icon';
 
 const { name } = metadata;
 export { metadata, name };
 
 export const settings = {
+	// Just `src` — letting CSS colour the icon. The `is-synced` class on the
+	// List View row (added because `isTemplatePart()` now returns `true` for
+	// this block) already paints the icon purple when not selected and white
+	// when selected. Setting `foreground` here would apply an inline style
+	// that overrides the selected-state colour.
 	icon,
 	edit,
 };

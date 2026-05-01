@@ -17,11 +17,22 @@
  * checks both the `wp_template` post type (user customizations) and theme
  * files, so this works for either source.
  *
+ * Pass `true` to reset the cache. Useful when root has been created, deleted,
+ * or saved during the same request and a subsequent render needs the fresh
+ * value (e.g. previewing edits made in the Site Editor without a full page
+ * reload). Cleared automatically when any `wp_template` post is saved.
+ *
+ * @param bool $reset Whether to discard the cached value before returning.
  * @return WP_Block_Template|null
  */
-function gutenberg_get_root_block_template() {
+function gutenberg_get_root_block_template( $reset = false ) {
 	static $resolved = false;
 	static $cached   = null;
+
+	if ( $reset ) {
+		$resolved = false;
+		$cached   = null;
+	}
 
 	if ( $resolved ) {
 		return $cached;
@@ -31,6 +42,16 @@ function gutenberg_get_root_block_template() {
 	$id     = get_stylesheet() . '//root';
 	$cached = get_block_template( $id, 'wp_template' );
 	return $cached;
+}
+
+/**
+ * Invalidates the cached root block template after any `wp_template` post is
+ * saved, so subsequent renders in the same request pick up the fresh content.
+ * Cheap (just resets two PHP statics).
+ */
+add_action( 'save_post_wp_template', 'gutenberg_clear_root_block_template_cache' );
+function gutenberg_clear_root_block_template_cache() {
+	gutenberg_get_root_block_template( true );
 }
 
 /**
@@ -74,4 +95,25 @@ function gutenberg_root_template_swap( $template ) {
 
 	return $template;
 }
-add_filter( 'template_include', 'gutenberg_root_template_swap', 999 );
+// Late-but-not-greedy priority: we need to run after every other
+// `template_include` consumer (so we can swap the globals they may have set),
+// while leaving room for anyone with a legitimate reason to run even later.
+add_filter( 'template_include', 'gutenberg_root_template_swap', PHP_INT_MAX - 10 );
+
+/**
+ * Registers the `root` template type with the standard hierarchy types so it
+ * gets a proper title and description in the Site Editor's templates list.
+ *
+ * @param array $template_types Map of template slug to type metadata.
+ * @return array
+ */
+function gutenberg_register_root_template_type( $template_types ) {
+	if ( ! isset( $template_types['root'] ) ) {
+		$template_types['root'] = array(
+			'title'       => _x( 'Root', 'Template name' ),
+			'description' => __( 'This template wraps every page. Use it to define site-wide scaffolding (header, footer, navigation, sidebars) once. Requires a Template Content block inside which renders the correct template in the WordPress hierarchy.' ),
+		);
+	}
+	return $template_types;
+}
+add_filter( 'default_template_types', 'gutenberg_register_root_template_type' );
