@@ -58,8 +58,8 @@ function gutenberg_clear_root_block_template_cache() {
  * Swaps the resolved template content for the root template, stashing the
  * inner template id so `core/template-content` can render the original.
  *
- * Hooked at a high priority on `template_include` so it runs after gutenberg
- * and core have populated `$_wp_current_template_id` /
+ * Hooked on `template_include`, which fires after the `*_template` filter
+ * chain has populated `$_wp_current_template_id` and
  * `$_wp_current_template_content`.
  *
  * @global string $_wp_current_template_id
@@ -95,10 +95,10 @@ function gutenberg_root_template_swap( $template ) {
 
 	return $template;
 }
-// Late-but-not-greedy priority: we need to run after every other
-// `template_include` consumer (so we can swap the globals they may have set),
-// while leaving room for anyone with a legitimate reason to run even later.
-add_filter( 'template_include', 'gutenberg_root_template_swap', PHP_INT_MAX - 10 );
+// `template_include` fires after the `*_template` filter chain, so by the
+// time this runs, `$_wp_current_template_id` / `$_wp_current_template_content`
+// are already populated. Default priority is sufficient.
+add_filter( 'template_include', 'gutenberg_root_template_swap' );
 
 /**
  * Registers the `root` template type with the standard hierarchy types so it
