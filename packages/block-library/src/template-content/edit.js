@@ -14,7 +14,7 @@ import {
 	store as coreStore,
 } from '@wordpress/core-data';
 import { useSelect, useRegistry } from '@wordpress/data';
-import { useEffect, useMemo } from '@wordpress/element';
+import { useLayoutEffect, useMemo } from '@wordpress/element';
 import {
 	Placeholder,
 	Spinner,
@@ -53,7 +53,11 @@ function useLockInnerBlocks( clientId ) {
 		[ clientId ]
 	);
 
-	useEffect( () => {
+	// `useLayoutEffect` (vs. `useEffect`) so the editing-mode dispatch fires
+	// synchronously after commit but before browser paint — closes the brief
+	// window where children would otherwise render in `default` mode and
+	// briefly accept clicks that go nowhere via our no-op `onChange`.
+	useLayoutEffect( () => {
 		if ( childClientIds.length === 0 ) {
 			return;
 		}

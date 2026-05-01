@@ -8,6 +8,7 @@ import { useState, useMemo, useCallback } from '@wordpress/element';
 import {
 	privateApis as corePrivateApis,
 	store as coreStore,
+	useEntityRecord,
 } from '@wordpress/core-data';
 import { DataViews, filterSortAndPaginate } from '@wordpress/dataviews';
 import { privateApis as routerPrivateApis } from '@wordpress/router';
@@ -320,20 +321,24 @@ export default function PageTemplates() {
 	// If the active theme has a `root.html`, opening any other template from
 	// this list should drop the user into focus mode — they're editing one
 	// template in isolation, the same way clicking a template part opens its
-	// own focused canvas.
-	const { hasRootTemplate, rootTemplateId } = useSelect( ( select ) => {
-		const { getCurrentTheme, getEntityRecord } = select( coreStore );
-		const stylesheet = getCurrentTheme()?.stylesheet;
-		if ( ! stylesheet ) {
-			return { hasRootTemplate: false, rootTemplateId: null };
-		}
-		const id = `${ stylesheet }//root`;
-		const root = getEntityRecord( 'postType', TEMPLATE_POST_TYPE, id );
-		return {
-			hasRootTemplate: !! root,
-			rootTemplateId: id,
-		};
-	}, [] );
+	// own focused canvas. We use `useEntityRecord` (rather than a bare
+	// `useSelect`) so the lookup is auto-fetched and we can wait for
+	// `hasResolved` before treating root as absent — otherwise a fast click
+	// would hit the click handler with stale "no root" data and skip focus
+	// mode by accident.
+	const stylesheet = useSelect(
+		( select ) => select( coreStore ).getCurrentTheme()?.stylesheet,
+		[]
+	);
+	const rootTemplateId = stylesheet ? `${ stylesheet }//root` : null;
+	const { record: rootTemplate, hasResolved: hasResolvedRoot } =
+		useEntityRecord(
+			'postType',
+			TEMPLATE_POST_TYPE,
+			rootTemplateId ?? '',
+			{ enabled: !! rootTemplateId }
+		);
+	const hasRootTemplate = hasResolvedRoot && !! rootTemplate;
 
 	const duplicateAction = actions.find(
 		( action ) => action.id === 'duplicate-post'
