@@ -12,7 +12,7 @@
  * content via `do_blocks()`. Guards against re-entrant rendering of the same
  * template id.
  *
- * @since X.X.X
+ * @since 7.1.0
  *
  * @return string Rendered template content.
  */
@@ -46,7 +46,7 @@ function render_block_core_template_content() {
 /**
  * Registers the `core/template-content` block on the server.
  *
- * @since X.X.X
+ * @since 7.1.0
  */
 function register_block_core_template_content() {
 	register_block_type_from_metadata(

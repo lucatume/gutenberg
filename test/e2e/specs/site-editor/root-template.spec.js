@@ -58,8 +58,9 @@ test.describe( 'Root template: focus-mode routing', () => {
 			.click();
 
 		await expect( page ).toHaveURL( /focusMode=true/ );
+		// The path is URL-encoded in the `p=` query param.
 		await expect( page ).toHaveURL(
-			/\/wp_template\/emptytheme\/\/index/
+			/wp_template%2Femptytheme%2F%2Findex/
 		);
 	} );
 
@@ -74,8 +75,9 @@ test.describe( 'Root template: focus-mode routing', () => {
 			.locator( '.fields-field__title', { hasText: 'Root' } )
 			.click();
 
+		// The path is URL-encoded in the `p=` query param.
 		await expect( page ).toHaveURL(
-			/\/wp_template\/emptytheme\/\/root/
+			/wp_template%2Femptytheme%2F%2Froot/
 		);
 		await expect( page ).not.toHaveURL( /focusMode=true/ );
 	} );
