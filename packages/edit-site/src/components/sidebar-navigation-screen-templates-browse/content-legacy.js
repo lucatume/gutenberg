@@ -1,16 +1,16 @@
 /**
  * WordPress dependencies
  */
-import { store as coreStore } from '@wordpress/core-data';
+import { store as coreStore, useEntityRecord } from '@wordpress/core-data';
 import { useSelect } from '@wordpress/data';
 import { __ } from '@wordpress/i18n';
+import { privateApis as routerPrivateApis } from '@wordpress/router';
 import {
 	commentAuthorAvatar,
 	layout,
 	plugins as pluginIcon,
 	globe,
 } from '@wordpress/icons';
-import { Path, SVG } from '@wordpress/primitives';
 
 /**
  * Internal dependencies
@@ -18,6 +18,10 @@ import { Path, SVG } from '@wordpress/primitives';
 import { TEMPLATE_POST_TYPE } from '../../utils/constants';
 import DataViewsSidebarContent from '../sidebar-dataviews';
 import SidebarNavigationItem from '../sidebar-navigation-item';
+import { unlock } from '../../lock-unlock';
+import rootTemplateIcon from './root-template-icon';
+
+const { useLocation } = unlock( routerPrivateApis );
 
 const SOURCE_TO_ICON = {
 	user: commentAuthorAvatar,
@@ -26,46 +30,28 @@ const SOURCE_TO_ICON = {
 	site: globe,
 };
 
-// Mirror of the `core/template-content` block icon. Inlined to avoid
-// importing private icon files from `@wordpress/block-library`.
-const rootTemplateIcon = (
-	<SVG xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
-		<Path d="M18 5.5H6a.5.5 0 00-.5.5v3h13V6a.5.5 0 00-.5-.5zm-10 5H5.5V18a.5.5 0 00.5.5h2.5v-8zM6 4h12a2 2 0 012 2v12a2 2 0 01-2 2H6a2 2 0 01-2-2V6a2 2 0 012-2z" />
-		<Path d="M10 10.5h8.5V18a.5.5 0 01-.5.5h-8z" />
-	</SVG>
-);
-
 export default function DataviewsTemplatesSidebarContent() {
-	const { authorSourceMap, rootTemplateId } = useSelect( ( select ) => {
-		const { getCurrentTheme, getEntityRecord, getEntityRecords } =
-			select( coreStore );
-		const templates = getEntityRecords(
+	const { params } = useLocation();
+	const authorSourceMap = useSelect( ( select ) => {
+		const templates = select( coreStore ).getEntityRecords(
 			'postType',
 			TEMPLATE_POST_TYPE,
 			{ per_page: -1 }
 		);
+		if ( ! templates ) {
+			return {};
+		}
 		const map = {};
-		if ( templates ) {
-			for ( const template of templates ) {
-				if (
-					template.author_text &&
-					template.original_source &&
-					! map[ template.author_text ]
-				) {
-					map[ template.author_text ] = template.original_source;
-				}
+		for ( const template of templates ) {
+			if (
+				template.author_text &&
+				template.original_source &&
+				! map[ template.author_text ]
+			) {
+				map[ template.author_text ] = template.original_source;
 			}
 		}
-		const stylesheet = getCurrentTheme()?.stylesheet;
-		let rootId = null;
-		if ( stylesheet ) {
-			const id = `${ stylesheet }//root`;
-			const record = getEntityRecord( 'postType', 'wp_template', id );
-			if ( record ) {
-				rootId = id;
-			}
-		}
-		return { authorSourceMap: map, rootTemplateId: rootId };
+		return map;
 	}, [] );
 
 	const resolveIcon = ( view ) => {
@@ -73,13 +59,33 @@ export default function DataviewsTemplatesSidebarContent() {
 		return SOURCE_TO_ICON[ source ] ?? layout;
 	};
 
-	// If the active theme provides a `root.html`, append a quick "Root
-	// template" link inside the same ItemGroup as the per-source views, so
-	// it reads as a peer entry with consistent left-alignment.
-	const appendItems = rootTemplateId ? (
+	// If the active theme provides a `root.html`, append a "Root template"
+	// link inside the same ItemGroup as the per-source views, so it reads
+	// as a peer entry with consistent left-alignment. `useEntityRecord`
+	// (vs. `useSelect`) so the lookup is auto-fetched and we know when it
+	// has resolved.
+	const stylesheet = useSelect(
+		( select ) => select( coreStore ).getCurrentTheme()?.stylesheet,
+		[]
+	);
+	const rootTemplateId = stylesheet ? `${ stylesheet }//root` : null;
+	const { record: rootTemplate, hasResolved: hasResolvedRoot } =
+		useEntityRecord(
+			'postType',
+			TEMPLATE_POST_TYPE,
+			rootTemplateId ?? '',
+			{ enabled: !! rootTemplateId }
+		);
+	const showRootEntry = hasResolvedRoot && !! rootTemplate;
+	const isEditingRoot =
+		params?.postId &&
+		decodeURIComponent( params.postId ) === rootTemplateId;
+
+	const appendItems = showRootEntry ? (
 		<SidebarNavigationItem
 			to={ `/wp_template/${ rootTemplateId }?canvas=edit` }
 			icon={ rootTemplateIcon }
+			aria-current={ isEditingRoot }
 		>
 			{ __( 'Root template' ) }
 		</SidebarNavigationItem>

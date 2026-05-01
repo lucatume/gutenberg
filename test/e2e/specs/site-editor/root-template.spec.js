@@ -13,19 +13,29 @@ const { test, expect } = require( '@wordpress/e2e-test-utils-playwright' );
  * those are smoke-test territory until the feature shape settles. This spec
  * just guards the focus-mode-on-click routing, which is the most easily
  * regressed piece.
+ *
+ * The root template is created via a direct REST POST rather than
+ * `requestUtils.createTemplate`, because that helper hardcodes
+ * `is_wp_suggestion: true`, which prevents the entity from showing up via
+ * `useEntityRecord` lookup-by-id in the editor.
  */
 test.describe( 'Root template: focus-mode routing', () => {
 	test.beforeAll( async ( { requestUtils } ) => {
 		await requestUtils.activateTheme( 'emptytheme' );
+	} );
+
+	test.beforeEach( async ( { requestUtils } ) => {
 		await requestUtils.deleteAllTemplates( 'wp_template' );
-		// The behaviour we want to assert only kicks in when a `root` template
-		// exists for the active theme. Create one as a published wp_template
-		// via REST — `useEntityRecord` in the editor will pick it up.
-		await requestUtils.createTemplate( 'wp_template', {
-			slug: 'root',
-			title: 'Root',
-			content:
-				'<!-- wp:paragraph --><p>Root chrome</p><!-- /wp:paragraph -->\n<!-- wp:template-content /-->',
+		await requestUtils.rest( {
+			method: 'POST',
+			path: '/wp/v2/templates',
+			params: {
+				slug: 'root',
+				title: 'Root',
+				content:
+					'<!-- wp:paragraph --><p>Root chrome</p><!-- /wp:paragraph -->\n<!-- wp:template-content /-->',
+				status: 'publish',
+			},
 		} );
 	} );
 

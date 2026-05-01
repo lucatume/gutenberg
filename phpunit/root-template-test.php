@@ -22,6 +22,18 @@ class Root_Template_Test extends WP_UnitTestCase {
 
 	public function set_up() {
 		parent::set_up();
+		// The render-callback assertions below call the gutenberg-prefixed
+		// function name from the built block file. If a contributor runs
+		// PHPUnit before building, the block isn't registered yet — skip
+		// rather than failing with an opaque "undefined function" error.
+		if (
+			! function_exists( 'gutenberg_render_block_core_template_content' )
+		) {
+			$this->markTestSkipped(
+				'core/template-content block not built. Run `npm run build` first.'
+			);
+		}
+
 		$this->original_stylesheet = get_stylesheet();
 		$this->original_template   = get_template();
 		$this->original_globals    = array(

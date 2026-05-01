@@ -14,7 +14,7 @@ import {
 	store as coreStore,
 } from '@wordpress/core-data';
 import { useSelect, useRegistry } from '@wordpress/data';
-import { useLayoutEffect, useMemo } from '@wordpress/element';
+import { useLayoutEffect, useMemo, useState } from '@wordpress/element';
 import {
 	Placeholder,
 	Spinner,
@@ -29,10 +29,10 @@ import {
 import icon from './icon';
 
 /**
- * The hierarchy used to find a default preview template when the block has
- * no `previewedTemplate` attribute set. Walks the same precedence WordPress
- * uses to resolve the home page on the frontend, falling through to the
- * universal `index` fallback if neither front-page nor home exists.
+ * The hierarchy used to find a default preview template when the user hasn't
+ * picked one explicitly. Walks the same precedence WordPress uses to resolve
+ * the home page on the frontend, falling through to the universal `index`
+ * fallback if neither front-page nor home exists.
  */
 const HOMEPAGE_FALLBACKS = [ 'front-page', 'home', 'index' ];
 
@@ -78,18 +78,16 @@ function useLockInnerBlocks( clientId ) {
 	}, [ childClientIds, registry ] );
 }
 
-export default function TemplateContentEdit( {
-	attributes,
-	setAttributes,
-	clientId,
-} ) {
-	const { previewedTemplate } = attributes;
+export default function TemplateContentEdit( { clientId } ) {
 	const blockProps = useBlockProps();
 
-	// Pull the active theme's stylesheet and the full list of available
-	// `wp_template` records for that theme. We need both to build the
-	// template-id from the user's chosen preview slug and to populate the
-	// dropdown of pickable templates.
+	// Per-session local state — the previewed template is an editor-only
+	// convenience, not data the theme author wants persisted into the saved
+	// root template's HTML. Each editor instance starts at the home-page
+	// hierarchy fallback and remembers what the user picked until they
+	// reload or navigate away.
+	const [ previewedTemplate, setPreviewedTemplate ] = useState( undefined );
+
 	const { stylesheet, themeTemplates } = useSelect( ( select ) => {
 		const { getCurrentTheme, getEntityRecords } = select( coreStore );
 		const sheet = getCurrentTheme()?.stylesheet;
@@ -106,10 +104,10 @@ export default function TemplateContentEdit( {
 	}, [] );
 
 	// Resolve the template id to render as the preview:
-	//   1. The block's `previewedTemplate` attribute, if set.
+	//   1. The user's session-local pick, if any.
 	//   2. Else the first of `front-page` / `home` / `index` that exists.
 	// Frontend rendering is unaffected; the swap there always follows the
-	// real WordPress hierarchy regardless of this attribute.
+	// real WordPress hierarchy regardless of this preview.
 	const templateId = useMemo( () => {
 		if ( ! stylesheet ) {
 			return null;
@@ -128,6 +126,20 @@ export default function TemplateContentEdit( {
 		}
 		return null;
 	}, [ stylesheet, previewedTemplate, themeTemplates ] );
+
+	// Whether the user can edit the previewed template. Mirrors
+	// `core/template-part`'s gate on the "Edit original" toolbar button so
+	// users without permission don't see an action they can't perform.
+	const canEditPreviewedTemplate = useSelect(
+		( select ) =>
+			!! templateId &&
+			!! select( coreStore ).canUser( 'update', {
+				kind: 'postType',
+				name: 'wp_template',
+				id: templateId,
+			} ),
+		[ templateId ]
+	);
 
 	const onNavigateToEntityRecord = useSelect(
 		( select ) =>
@@ -175,14 +187,12 @@ export default function TemplateContentEdit( {
 				<SelectControl
 					label={ __( 'Preview template' ) }
 					help={ __(
-						'Pick which template to render inside this block while editing. The frontend always uses the WordPress hierarchy regardless of this setting.'
+						'Pick which template to render inside this block while editing. The frontend always uses the WordPress hierarchy regardless of this setting; the choice is not saved.'
 					) }
 					value={ previewedTemplate ?? '' }
 					options={ previewOptions }
 					onChange={ ( value ) =>
-						setAttributes( {
-							previewedTemplate: value || undefined,
-						} )
+						setPreviewedTemplate( value || undefined )
 					}
 				/>
 			</PanelBody>
@@ -192,20 +202,22 @@ export default function TemplateContentEdit( {
 	const isLoaded = !! blocks;
 	const hasContent = isLoaded && blocks.length > 0;
 
-	const editOriginalToolbar = templateId && onNavigateToEntityRecord && (
-		<BlockControls group="other">
-			<ToolbarButton
-				onClick={ () =>
-					onNavigateToEntityRecord( {
-						postId: templateId,
-						postType: 'wp_template',
-					} )
-				}
-			>
-				{ __( 'Edit original' ) }
-			</ToolbarButton>
-		</BlockControls>
-	);
+	const editOriginalToolbar = templateId &&
+		canEditPreviewedTemplate &&
+		onNavigateToEntityRecord && (
+			<BlockControls group="other">
+				<ToolbarButton
+					onClick={ () =>
+						onNavigateToEntityRecord( {
+							postId: templateId,
+							postType: 'wp_template',
+						} )
+					}
+				>
+					{ __( 'Edit original' ) }
+				</ToolbarButton>
+			</BlockControls>
+		);
 
 	if ( hasContent ) {
 		return (

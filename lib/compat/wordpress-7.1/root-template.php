@@ -104,16 +104,24 @@ add_filter( 'template_include', 'gutenberg_root_template_swap', PHP_INT_MAX - 10
  * Registers the `root` template type with the standard hierarchy types so it
  * gets a proper title and description in the Site Editor's templates list.
  *
+ * Only adds the entry when the active theme actually provides a `root.html`,
+ * so themes that don't use the wrapping pattern don't see "Root" as an
+ * available template type in the "Add new" UI.
+ *
  * @param array $template_types Map of template slug to type metadata.
  * @return array
  */
 function gutenberg_register_root_template_type( $template_types ) {
-	if ( ! isset( $template_types['root'] ) ) {
-		$template_types['root'] = array(
-			'title'       => _x( 'Root', 'Template name' ),
-			'description' => __( 'This template wraps every page. Use it to define site-wide scaffolding (header, footer, navigation, sidebars) once. Requires a Template Content block inside which renders the correct template in the WordPress hierarchy.' ),
-		);
+	if ( isset( $template_types['root'] ) ) {
+		return $template_types;
 	}
+	if ( ! gutenberg_get_root_block_template() ) {
+		return $template_types;
+	}
+	$template_types['root'] = array(
+		'title'       => _x( 'Root', 'Template name' ),
+		'description' => __( 'This template wraps every page. Use it to define site-wide scaffolding (header, footer, navigation, sidebars) once. Requires a Template Content block inside which renders the correct template in the WordPress hierarchy.' ),
+	);
 	return $template_types;
 }
 add_filter( 'default_template_types', 'gutenberg_register_root_template_type' );

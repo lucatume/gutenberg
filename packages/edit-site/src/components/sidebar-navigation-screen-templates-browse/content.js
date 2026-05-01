@@ -3,6 +3,7 @@
  */
 import {
 	store as coreStore,
+	useEntityRecord,
 	useEntityRecords,
 } from '@wordpress/core-data';
 import { useSelect } from '@wordpress/data';
@@ -11,7 +12,6 @@ import { __experimentalItemGroup as ItemGroup } from '@wordpress/components';
 import { __ } from '@wordpress/i18n';
 import { privateApis as routerPrivateApis } from '@wordpress/router';
 import { addQueryArgs } from '@wordpress/url';
-import { Path, SVG } from '@wordpress/primitives';
 
 /**
  * Internal dependencies
@@ -20,19 +20,11 @@ import SidebarNavigationItem from '../sidebar-navigation-item';
 import { useAddedBy } from '../page-templates/hooks';
 import { commentAuthorAvatar, published } from '@wordpress/icons';
 import { unlock } from '../../lock-unlock';
+import rootTemplateIcon from './root-template-icon';
 
 const { useLocation } = unlock( routerPrivateApis );
 
 const EMPTY_ARRAY = [];
-
-// Mirror of the `core/template-content` block icon. Inlined to avoid
-// importing private icon files from `@wordpress/block-library`.
-const rootTemplateIcon = (
-	<SVG xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
-		<Path d="M18 5.5H6a.5.5 0 00-.5.5v3h13V6a.5.5 0 00-.5-.5zm-10 5H5.5V18a.5.5 0 00.5.5h2.5v-8zM6 4h12a2 2 0 012 2v12a2 2 0 01-2 2H6a2 2 0 01-2-2V6a2 2 0 012-2z" />
-		<Path d="M10 10.5h8.5V18a.5.5 0 01-.5.5h-8z" />
-	</SVG>
-);
 
 function TemplateDataviewItem( { template, isActive } ) {
 	const { text, icon } = useAddedBy( template.type, template.id );
@@ -50,6 +42,7 @@ function TemplateDataviewItem( { template, isActive } ) {
 
 export default function DataviewsTemplatesSidebarContent() {
 	const {
+		params,
 		query: { activeView = 'active' },
 	} = useLocation();
 	const { records } = useEntityRecords( 'root', 'registeredTemplate', {
@@ -73,19 +66,23 @@ export default function DataviewsTemplatesSidebarContent() {
 	}, [ records ] );
 
 	// If the active theme provides a `root.html`, surface a quick "Root
-	// template" link at the bottom of the templates sidebar — promoted out of
-	// the per-source views because it's the most common thing an author will
-	// want to edit on a root-template-based theme.
-	const rootTemplateId = useSelect( ( select ) => {
-		const { getCurrentTheme, getEntityRecord } = select( coreStore );
-		const stylesheet = getCurrentTheme()?.stylesheet;
-		if ( ! stylesheet ) {
-			return null;
-		}
-		const id = `${ stylesheet }//root`;
-		const record = getEntityRecord( 'postType', 'wp_template', id );
-		return record ? id : null;
-	}, [] );
+	// template" link inside the same ItemGroup as the per-source views so
+	// it reads as a peer entry with consistent left-alignment. Promoted
+	// out of the per-source views because it's the most common thing an
+	// author of a root-template-based theme will want to edit.
+	const stylesheet = useSelect(
+		( select ) => select( coreStore ).getCurrentTheme()?.stylesheet,
+		[]
+	);
+	const rootTemplateId = stylesheet ? `${ stylesheet }//root` : null;
+	const { record: rootTemplate, hasResolved: hasResolvedRoot } =
+		useEntityRecord( 'postType', 'wp_template', rootTemplateId ?? '', {
+			enabled: !! rootTemplateId,
+		} );
+	const showRootEntry = hasResolvedRoot && !! rootTemplate;
+	const isEditingRoot =
+		params?.postId &&
+		decodeURIComponent( params.postId ) === rootTemplateId;
 
 	return (
 		<ItemGroup className="edit-site-sidebar-navigation-screen-templates-browse">
@@ -96,6 +93,15 @@ export default function DataviewsTemplatesSidebarContent() {
 			>
 				{ __( 'Active templates' ) }
 			</SidebarNavigationItem>
+			{ showRootEntry && (
+				<SidebarNavigationItem
+					to={ `/wp_template/${ rootTemplateId }?canvas=edit` }
+					icon={ rootTemplateIcon }
+					aria-current={ isEditingRoot }
+				>
+					{ __( 'Root template' ) }
+				</SidebarNavigationItem>
+			) }
 			<SidebarNavigationItem
 				to={ addQueryArgs( '/template', { activeView: 'user' } ) }
 				icon={ commentAuthorAvatar }
@@ -118,14 +124,6 @@ export default function DataviewsTemplatesSidebarContent() {
 					/>
 				);
 			} ) }
-			{ rootTemplateId && (
-				<SidebarNavigationItem
-					to={ `/wp_template/${ rootTemplateId }?canvas=edit` }
-					icon={ rootTemplateIcon }
-				>
-					{ __( 'Root template' ) }
-				</SidebarNavigationItem>
-			) }
 		</ItemGroup>
 	);
 }
