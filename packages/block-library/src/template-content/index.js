@@ -28,17 +28,12 @@ export const settings = {
 
 /**
  * Returns true when the editor is currently editing the `root` wp_template
- * entity directly (not wrapping another template). Reads selectors via
- * `select()` to avoid a hard dependency on `@wordpress/editor`.
- *
- * The wrapping case (Site Editor swaps in `root` to preview e.g. archive.html)
- * is excluded so users don't accidentally nest a `core/template-content` block
- * inside the inner template, which would create a render-time loop.
+ * entity. Reads selectors via `select()` to avoid a hard dependency on
+ * `@wordpress/editor` (which isn't available in every editor context).
  */
 function isEditingRootTemplate() {
 	const editor = select( 'core/editor' );
-	const postType = editor?.getCurrentPostType?.();
-	if ( postType !== 'wp_template' ) {
+	if ( editor?.getCurrentPostType?.() !== 'wp_template' ) {
 		return false;
 	}
 	const postId = editor?.getCurrentPostId?.();
@@ -50,14 +45,7 @@ function isEditingRootTemplate() {
 		'wp_template',
 		postId
 	);
-	if ( record?.slug !== 'root' ) {
-		return false;
-	}
-	const settings = select( 'core/block-editor' )?.getSettings?.();
-	if ( settings?.__experimentalRootInnerTemplateId ) {
-		return false;
-	}
-	return true;
+	return record?.slug === 'root';
 }
 
 export const init = () => {
