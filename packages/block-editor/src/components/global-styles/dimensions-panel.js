@@ -1,7 +1,6 @@
 /**
  * External dependencies
  */
-import clsx from 'clsx';
 
 /**
  * WordPress dependencies
@@ -9,7 +8,6 @@ import clsx from 'clsx';
 import { __ } from '@wordpress/i18n';
 import {
 	__experimentalToolsPanel as ToolsPanel,
-	__experimentalToolsPanelItem as ToolsPanelItem,
 	BoxControl,
 	__experimentalUnitControl as UnitControl,
 	__experimentalUseCustomUnits as useCustomUnits,
@@ -29,6 +27,7 @@ import ChildLayoutControl from '../child-layout-control';
 import AspectRatioTool from '../dimensions-tool/aspect-ratio-tool';
 import { cleanEmptyObject } from '../../hooks/utils';
 import { setImmutably } from '../../utils/object';
+import { getInheritanceProps, InheritanceToolsPanelItem } from './inheritance';
 
 const AXIAL_SIDES = [ 'horizontal', 'vertical' ];
 
@@ -266,6 +265,7 @@ export default function DimensionsPanel( {
 	// Special case because the layout controls are not part of the dimensions panel
 	// in global styles but not in block inspector.
 	includeLayoutControls = false,
+	showInheritanceLabelIndicators = true,
 } ) {
 	const { dimensions, spacing } = settings;
 
@@ -286,6 +286,10 @@ export default function DimensionsPanel( {
 			rawValue
 		);
 	};
+	const inheritanceProps = ( isInherited, hasLocalOverride, className ) =>
+		showInheritanceLabelIndicators
+			? getInheritanceProps( isInherited, hasLocalOverride, className )
+			: {};
 
 	const showSpacingPresetsControl = hasSpacingPresets( settings );
 	const units = useCustomUnits( {
@@ -659,7 +663,12 @@ export default function DimensionsPanel( {
 				</span>
 			) }
 			{ showContentSizeControl && (
-				<ToolsPanelItem
+				<InheritanceToolsPanelItem
+					{ ...inheritanceProps(
+						isContentSizePlaceholder,
+						hasUserSetContentSizeValue() &&
+							inheritedContentSizeValue !== undefined
+					) }
 					label={ __( 'Content width' ) }
 					hasValue={ hasUserSetContentSizeValue }
 					onDeselect={ resetContentSizeValue }
@@ -679,11 +688,6 @@ export default function DimensionsPanel( {
 								? inheritedContentSizeValue
 								: undefined
 						}
-						className={
-							isContentSizePlaceholder
-								? 'is-inherited-placeholder'
-								: undefined
-						}
 						onChange={ ( nextContentSize ) => {
 							setContentSizeValue( nextContentSize );
 						} }
@@ -694,10 +698,15 @@ export default function DimensionsPanel( {
 							</InputControlPrefixWrapper>
 						}
 					/>
-				</ToolsPanelItem>
+				</InheritanceToolsPanelItem>
 			) }
 			{ showWideSizeControl && (
-				<ToolsPanelItem
+				<InheritanceToolsPanelItem
+					{ ...inheritanceProps(
+						isWideSizePlaceholder,
+						hasUserSetWideSizeValue() &&
+							inheritedWideSizeValue !== undefined
+					) }
 					label={ __( 'Wide width' ) }
 					hasValue={ hasUserSetWideSizeValue }
 					onDeselect={ resetWideSizeValue }
@@ -716,11 +725,6 @@ export default function DimensionsPanel( {
 								? inheritedWideSizeValue
 								: undefined
 						}
-						className={
-							isWideSizePlaceholder
-								? 'is-inherited-placeholder'
-								: undefined
-						}
 						onChange={ ( nextWideSize ) => {
 							setWideSizeValue( nextWideSize );
 						} }
@@ -731,19 +735,25 @@ export default function DimensionsPanel( {
 							</InputControlPrefixWrapper>
 						}
 					/>
-				</ToolsPanelItem>
+				</InheritanceToolsPanelItem>
 			) }
 			{ showPaddingControl && (
-				<ToolsPanelItem
+				<InheritanceToolsPanelItem
 					hasValue={ hasPaddingValue }
 					label={ __( 'Padding' ) }
 					onDeselect={ resetPaddingValue }
 					isShownByDefault={
 						defaultControls.padding ?? DEFAULT_CONTROLS.padding
 					}
-					className={ clsx( {
-						'tools-panel-item-spacing': showSpacingPresetsControl,
-					} ) }
+					{ ...inheritanceProps(
+						isPaddingPlaceholder,
+						hasPaddingValue() &&
+							inheritedPaddingPlaceholder !== undefined,
+						{
+							'tools-panel-item-spacing':
+								showSpacingPresetsControl,
+						}
+					) }
 					panelId={ panelId }
 				>
 					{ ! showSpacingPresetsControl && (
@@ -762,9 +772,6 @@ export default function DimensionsPanel( {
 								placeholder: isPaddingPlaceholder
 									? inheritedPaddingPlaceholder
 									: undefined,
-								className: isPaddingPlaceholder
-									? 'is-inherited-placeholder'
-									: undefined,
 							} }
 						/>
 					) }
@@ -780,19 +787,25 @@ export default function DimensionsPanel( {
 							onMouseOut={ onMouseLeaveControls }
 						/>
 					) }
-				</ToolsPanelItem>
+				</InheritanceToolsPanelItem>
 			) }
 			{ showMarginControl && (
-				<ToolsPanelItem
+				<InheritanceToolsPanelItem
 					hasValue={ hasMarginValue }
 					label={ __( 'Margin' ) }
 					onDeselect={ resetMarginValue }
 					isShownByDefault={
 						defaultControls.margin ?? DEFAULT_CONTROLS.margin
 					}
-					className={ clsx( {
-						'tools-panel-item-spacing': showSpacingPresetsControl,
-					} ) }
+					{ ...inheritanceProps(
+						isMarginPlaceholder,
+						hasMarginValue() &&
+							inheritedMarginPlaceholder !== undefined,
+						{
+							'tools-panel-item-spacing':
+								showSpacingPresetsControl,
+						}
+					) }
 					panelId={ panelId }
 				>
 					{ ! showSpacingPresetsControl && (
@@ -813,9 +826,6 @@ export default function DimensionsPanel( {
 								onMouseOut: onMouseLeaveControls,
 								placeholder: isMarginPlaceholder
 									? inheritedMarginPlaceholder
-									: undefined,
-								className: isMarginPlaceholder
-									? 'is-inherited-placeholder'
 									: undefined,
 							} }
 							label={ __( 'Margin' ) }
@@ -838,22 +848,27 @@ export default function DimensionsPanel( {
 							onMouseOut={ onMouseLeaveControls }
 						/>
 					) }
-				</ToolsPanelItem>
+				</InheritanceToolsPanelItem>
 			) }
 			{ showGapControl && (
-				<ToolsPanelItem
+				<InheritanceToolsPanelItem
 					hasValue={ hasGapValue }
 					label={ __( 'Block spacing' ) }
 					onDeselect={ resetGapValue }
 					isShownByDefault={
 						defaultControls.blockGap ?? DEFAULT_CONTROLS.blockGap
 					}
-					className={ clsx( {
-						'tools-panel-item-spacing': showSpacingPresetsControl,
-						'single-column':
-							// If UnitControl is used, should be single-column.
-							! showSpacingPresetsControl && ! isAxialGap,
-					} ) }
+					{ ...inheritanceProps(
+						isGapPlaceholder,
+						hasGapValue() && inheritedGapRaw !== undefined,
+						{
+							'tools-panel-item-spacing':
+								showSpacingPresetsControl,
+							'single-column':
+								// If UnitControl is used, should be single-column.
+								! showSpacingPresetsControl && ! isAxialGap,
+						}
+					) }
 					panelId={ panelId }
 				>
 					{ ! showSpacingPresetsControl &&
@@ -886,11 +901,6 @@ export default function DimensionsPanel( {
 										? inheritedGapRaw
 										: undefined
 								}
-								className={
-									isGapPlaceholder
-										? 'is-inherited-placeholder'
-										: undefined
-								}
 							/>
 						) ) }
 					{ showSpacingPresetsControl && (
@@ -904,7 +914,7 @@ export default function DimensionsPanel( {
 							allowReset={ false }
 						/>
 					) }
-				</ToolsPanelItem>
+				</InheritanceToolsPanelItem>
 			) }
 			{ showChildLayoutControl && (
 				<ChildLayoutControl
@@ -919,7 +929,12 @@ export default function DimensionsPanel( {
 				/>
 			) }
 			{ showMinHeightControl && (
-				<ToolsPanelItem
+				<InheritanceToolsPanelItem
+					{ ...inheritanceProps(
+						isMinHeightPlaceholder,
+						hasMinHeightValue() &&
+							inheritedMinHeightValue !== undefined
+					) }
 					hasValue={ hasMinHeightValue }
 					label={ __( 'Minimum height' ) }
 					onDeselect={ resetMinHeightValue }
@@ -937,17 +952,17 @@ export default function DimensionsPanel( {
 								? inheritedMinHeightValue
 								: undefined
 						}
-						className={
-							isMinHeightPlaceholder
-								? 'is-inherited-placeholder'
-								: undefined
-						}
 						dimensionSizes={ dimensions?.dimensionSizes }
 					/>
-				</ToolsPanelItem>
+				</InheritanceToolsPanelItem>
 			) }
 			{ showMinWidthControl && (
-				<ToolsPanelItem
+				<InheritanceToolsPanelItem
+					{ ...inheritanceProps(
+						isMinWidthPlaceholder,
+						hasMinWidthValue() &&
+							inheritedMinWidthValue !== undefined
+					) }
 					hasValue={ hasMinWidthValue }
 					label={ __( 'Minimum width' ) }
 					onDeselect={ resetMinWidthValue }
@@ -965,17 +980,16 @@ export default function DimensionsPanel( {
 								? inheritedMinWidthValue
 								: undefined
 						}
-						className={
-							isMinWidthPlaceholder
-								? 'is-inherited-placeholder'
-								: undefined
-						}
 						dimensionSizes={ dimensions?.dimensionSizes }
 					/>
-				</ToolsPanelItem>
+				</InheritanceToolsPanelItem>
 			) }
 			{ showHeightControl && (
-				<ToolsPanelItem
+				<InheritanceToolsPanelItem
+					{ ...inheritanceProps(
+						isHeightPlaceholder,
+						hasHeightValue() && inheritedHeightValue !== undefined
+					) }
 					hasValue={ hasHeightValue }
 					label={ __( 'Height' ) }
 					onDeselect={ resetHeightValue }
@@ -993,17 +1007,16 @@ export default function DimensionsPanel( {
 								? inheritedHeightValue
 								: undefined
 						}
-						className={
-							isHeightPlaceholder
-								? 'is-inherited-placeholder'
-								: undefined
-						}
 						dimensionSizes={ dimensions?.dimensionSizes }
 					/>
-				</ToolsPanelItem>
+				</InheritanceToolsPanelItem>
 			) }
 			{ showWidthControl && (
-				<ToolsPanelItem
+				<InheritanceToolsPanelItem
+					{ ...inheritanceProps(
+						isWidthPlaceholder,
+						hasWidthValue() && inheritedWidthValue !== undefined
+					) }
 					hasValue={ hasWidthValue }
 					label={ __( 'Width' ) }
 					onDeselect={ resetWidthValue }
@@ -1019,14 +1032,9 @@ export default function DimensionsPanel( {
 						placeholder={
 							isWidthPlaceholder ? inheritedWidthValue : undefined
 						}
-						className={
-							isWidthPlaceholder
-								? 'is-inherited-placeholder'
-								: undefined
-						}
 						dimensionSizes={ dimensions?.dimensionSizes }
 					/>
-				</ToolsPanelItem>
+				</InheritanceToolsPanelItem>
 			) }
 			{ showAspectRatioControl && (
 				<AspectRatioTool
@@ -1034,11 +1042,11 @@ export default function DimensionsPanel( {
 					value={ aspectRatioValue }
 					onChange={ setAspectRatioValue }
 					panelId={ panelId }
-					className={
-						isAspectRatioPlaceholder
-							? 'is-inherited-placeholder'
-							: undefined
-					}
+					{ ...inheritanceProps(
+						isAspectRatioPlaceholder,
+						hasAspectRatioValue() &&
+							inheritedAspectRatioValue !== undefined
+					) }
 					isShownByDefault={
 						defaultControls.aspectRatio ??
 						DEFAULT_CONTROLS.aspectRatio

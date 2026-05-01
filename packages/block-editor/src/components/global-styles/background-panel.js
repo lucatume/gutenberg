@@ -1,10 +1,11 @@
 /**
+ * External dependencies
+ */
+
+/**
  * WordPress dependencies
  */
-import {
-	__experimentalToolsPanel as ToolsPanel,
-	__experimentalToolsPanelItem as ToolsPanelItem,
-} from '@wordpress/components';
+import { __experimentalToolsPanel as ToolsPanel } from '@wordpress/components';
 import { useCallback, Platform } from '@wordpress/element';
 import { __ } from '@wordpress/i18n';
 import { getValueFromVariable } from '@wordpress/global-styles-engine';
@@ -17,6 +18,7 @@ import { ColorPanelDropdown } from './color-panel';
 import { useGradientsPerOrigin } from './hooks';
 import { useToolsPanelDropdownMenuProps } from './utils';
 import { setImmutably } from '../../utils/object';
+import { getInheritanceProps, InheritanceToolsPanelItem } from './inheritance';
 
 const DEFAULT_CONTROLS = {
 	backgroundImage: true,
@@ -134,6 +136,7 @@ export default function BackgroundImagePanel( {
 	defaultControls = DEFAULT_CONTROLS,
 	defaultValues = {},
 	headerLabel = __( 'Background' ),
+	showInheritanceLabelIndicators = true,
 } ) {
 	const gradients = useGradientsPerOrigin( settings );
 	const areCustomGradientsEnabled = settings?.color?.customGradient;
@@ -227,6 +230,11 @@ export default function BackgroundImagePanel( {
 		onChange( newValue );
 	};
 
+	const inheritanceProps = ( isInherited, hasLocalOverride, className ) =>
+		showInheritanceLabelIndicators
+			? getInheritanceProps( isInherited, hasLocalOverride, className )
+			: {};
+
 	return (
 		<Wrapper
 			resetAllFilter={ resetAllFilter }
@@ -236,8 +244,17 @@ export default function BackgroundImagePanel( {
 			headerLabel={ headerLabel }
 		>
 			{ showBackgroundImageControl && (
-				<ToolsPanelItem
-					className="block-editor-background-panel__item"
+				<InheritanceToolsPanelItem
+					{ ...inheritanceProps(
+						hasBackgroundImageValue( {
+							background: inheritedValue?.background,
+						} ) && ! hasBackgroundImageValue( value ),
+						hasBackgroundImageValue( value ) &&
+							hasBackgroundImageValue( {
+								background: inheritedValue?.background,
+							} ),
+						'block-editor-background-panel__item'
+					) }
 					hasValue={ () => hasBackgroundImageValue( value ) }
 					label={ __( 'Image' ) }
 					onDeselect={ resetBackground }
@@ -252,21 +269,32 @@ export default function BackgroundImagePanel( {
 						defaultControls={ defaultControls }
 						defaultValues={ defaultValues }
 					/>
-				</ToolsPanelItem>
+				</InheritanceToolsPanelItem>
 			) }
 			{ showBackgroundGradientControl && (
 				<ColorPanelDropdown
 					className="block-editor-background-panel__item"
-					label={ __( 'Gradient' ) }
-					hasValue={ () => hasBackgroundGradientValue( value ) }
-					resetValue={ resetGradient }
-					isShownByDefault={ defaultControls.gradient }
-					// Display the inherited gradient in the indicator while local is unset.
-					indicators={ [ currentGradient ?? inheritedGradient ] }
+					showInheritanceLabelIndicators={
+						showInheritanceLabelIndicators
+					}
 					isPlaceholder={
 						currentGradient === undefined &&
 						inheritedGradient !== undefined
 					}
+					hasInheritedValue={ inheritedGradient !== undefined }
+					label={ __( 'Gradient' ) }
+					hasValue={ () => hasBackgroundGradientValue( value ) }
+					resetValue={ resetGradient }
+					isShownByDefault={ defaultControls.gradient }
+					/*
+					 * Show the inherited gradient in the indicator until a local
+					 * value is set.
+					 */
+					indicators={ [ currentGradient ?? inheritedGradient ] }
+					/*
+					 * Commit the inherited value when the user clicks the active
+					 * swatch while the control is displaying inherited data.
+					 */
 					tabs={ [
 						{
 							key: 'gradient',

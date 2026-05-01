@@ -8,7 +8,6 @@ import clsx from 'clsx';
  */
 import {
 	__experimentalToolsPanel as ToolsPanel,
-	__experimentalToolsPanelItem as ToolsPanelItem,
 	__experimentalHStack as HStack,
 	__experimentalZStack as ZStack,
 	__experimentalDropdownContentWrapper as DropdownContentWrapper,
@@ -32,6 +31,7 @@ import { useColorsPerOrigin, useGradientsPerOrigin } from './hooks';
 import { useToolsPanelDropdownMenuProps } from './utils';
 import { setImmutably } from '../../utils/object';
 import { unlock } from '../../lock-unlock';
+import { getInheritanceProps, InheritanceToolsPanelItem } from './inheritance';
 
 export function useHasColorPanel( settings ) {
 	const hasTextPanel = useHasTextPanel( settings );
@@ -230,13 +230,23 @@ export function ColorPanelDropdown( {
 	panelId,
 	className = 'block-editor-tools-panel-color-gradient-settings__item',
 	isPlaceholder = false,
+	hasInheritedValue = false,
+	showInheritanceLabelIndicators = true,
 } ) {
 	const currentTab = tabs.find( ( tab ) => tab.userValue !== undefined );
 	const { key: firstTabKey, ...firstTab } = tabs[ 0 ] ?? {};
 	const colorGradientDropdownButtonRef = useRef( undefined );
+	const inheritanceProps = ( isInherited, hasLocalOverride, classes ) =>
+		showInheritanceLabelIndicators
+			? getInheritanceProps( isInherited, hasLocalOverride, classes )
+			: {};
 	return (
-		<ToolsPanelItem
-			className={ className }
+		<InheritanceToolsPanelItem
+			{ ...inheritanceProps(
+				isPlaceholder,
+				hasValue() && hasInheritedValue,
+				className
+			) }
 			hasValue={ hasValue }
 			label={ label }
 			onDeselect={ resetValue }
@@ -245,10 +255,7 @@ export function ColorPanelDropdown( {
 		>
 			<Dropdown
 				popoverProps={ popoverProps }
-				className={ clsx(
-					'block-editor-tools-panel-color-gradient-settings__dropdown',
-					{ 'is-inherited-placeholder': isPlaceholder }
-				) }
+				className="block-editor-tools-panel-color-gradient-settings__dropdown"
 				renderToggle={ ( { onToggle, isOpen } ) => {
 					const toggleProps = {
 						onClick: onToggle,
@@ -338,7 +345,7 @@ export function ColorPanelDropdown( {
 					</DropdownContentWrapper>
 				) }
 			/>
-		</ToolsPanelItem>
+		</InheritanceToolsPanelItem>
 	);
 }
 
@@ -352,6 +359,7 @@ export default function ColorPanel( {
 	defaultControls = DEFAULT_CONTROLS,
 	label,
 	children,
+	showInheritanceLabelIndicators = true,
 } ) {
 	const colors = useColorsPerOrigin( settings );
 	const gradients = useGradientsPerOrigin( settings );
@@ -587,6 +595,7 @@ export default function ColorPanel( {
 			indicators: [ userTextColor ?? textColor ],
 			isPlaceholder:
 				userTextColor === undefined && textColor !== undefined,
+			hasInheritedValue: textColor !== undefined,
 			tabs: [
 				{
 					key: 'text',
@@ -616,6 +625,9 @@ export default function ColorPanel( {
 				userGradient === undefined &&
 				( backgroundColor !== undefined ||
 					( showGradientColors && gradient !== undefined ) ),
+			hasInheritedValue:
+				backgroundColor !== undefined ||
+				( showGradientColors && gradient !== undefined ),
 			tabs: [
 				hasSolidColors && {
 					key: 'background',
@@ -653,6 +665,8 @@ export default function ColorPanel( {
 				userLinkColor === undefined &&
 				userHoverLinkColor === undefined &&
 				( linkColor !== undefined || hoverLinkColor !== undefined ),
+			hasInheritedValue:
+				linkColor !== undefined || hoverLinkColor !== undefined,
 			tabs: [
 				{
 					key: 'link',
@@ -767,6 +781,10 @@ export default function ColorPanel( {
 			( elementTextColor !== undefined ||
 				elementBackgroundColor !== undefined ||
 				elementGradient !== undefined );
+		const hasElementInheritedValue =
+			elementTextColor !== undefined ||
+			elementBackgroundColor !== undefined ||
+			elementGradient !== undefined;
 
 		items.push( {
 			key: name,
@@ -792,6 +810,7 @@ export default function ColorPanel( {
 								  elementBackgroundColor,
 					  ],
 			isPlaceholder: isElementPlaceholder,
+			hasInheritedValue: hasElementInheritedValue,
 			tabs: [
 				hasSolidColors &&
 					supportsTextColor && {
@@ -839,6 +858,9 @@ export default function ColorPanel( {
 					<ColorPanelDropdown
 						key={ key }
 						{ ...restItem }
+						showInheritanceLabelIndicators={
+							showInheritanceLabelIndicators
+						}
 						colorGradientControlSettings={ {
 							colors,
 							disableCustomColors: ! areCustomSolidsEnabled,

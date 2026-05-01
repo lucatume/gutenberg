@@ -5,7 +5,6 @@ import {
 	FontSizePicker,
 	__experimentalNumberControl as NumberControl,
 	__experimentalToolsPanel as ToolsPanel,
-	__experimentalToolsPanelItem as ToolsPanelItem,
 	Notice,
 	ToggleControl,
 } from '@wordpress/components';
@@ -32,6 +31,7 @@ import {
 	findNearestStyleAndWeight,
 } from './typography-utils';
 import { getFontStylesAndWeights } from '../../utils/get-font-styles-and-weights';
+import { getInheritanceProps, InheritanceToolsPanelItem } from './inheritance';
 
 const MIN_TEXT_COLUMNS = 1;
 const MAX_TEXT_COLUMNS = 6;
@@ -191,9 +191,14 @@ export default function TypographyPanel( {
 	panelId,
 	defaultControls = DEFAULT_CONTROLS,
 	isGlobalStyles = false,
+	showInheritanceLabelIndicators = true,
 } ) {
 	const decodeValue = ( rawValue ) =>
 		getValueFromVariable( { settings }, '', rawValue );
+	const inheritanceProps = ( isInherited, hasLocalOverride, className ) =>
+		showInheritanceLabelIndicators
+			? getInheritanceProps( isInherited, hasLocalOverride, className )
+			: {};
 
 	// Font Family
 	const hasFontFamilyEnabled = useHasFontFamilyControl( settings );
@@ -706,7 +711,11 @@ export default function TypographyPanel( {
 			panelId={ panelId }
 		>
 			{ hasFontFamilyEnabled && (
-				<ToolsPanelItem
+				<InheritanceToolsPanelItem
+					{ ...inheritanceProps(
+						isFontFamilyPlaceholder,
+						hasFontFamily() && inheritedFontFamily !== undefined
+					) }
 					label={ __( 'Font' ) }
 					hasValue={ hasFontFamily }
 					onDeselect={ resetFontFamily }
@@ -718,76 +727,67 @@ export default function TypographyPanel( {
 						value={ fontFamily }
 						onChange={ setFontFamily }
 						size="__unstable-large"
-						className={
-							isFontFamilyPlaceholder
-								? 'is-inherited-placeholder'
-								: undefined
-						}
 					/>
-				</ToolsPanelItem>
+				</InheritanceToolsPanelItem>
 			) }
 			{ hasFontSizeEnabled && (
-				<ToolsPanelItem
+				<InheritanceToolsPanelItem
+					{ ...inheritanceProps(
+						isFontSizePlaceholder,
+						hasFontSize() && rawInheritedFontSize !== undefined
+					) }
 					label={ __( 'Size' ) }
 					hasValue={ hasFontSize }
 					onDeselect={ resetFontSize }
 					isShownByDefault={ defaultControls.fontSize }
 					panelId={ panelId }
 				>
-					<div
-						className={
-							isFontSizePlaceholder
-								? 'is-inherited-placeholder'
-								: undefined
-						}
-					>
-						<FontSizePicker
-							value={ currentFontSizeSlug || fontSize }
-							valueMode={
-								currentFontSizeSlug ? 'slug' : 'literal'
-							}
-							onChange={ setFontSizeWithInheritedCommit }
-							fontSizes={ mergedFontSizes }
-							disableCustomFontSizes={ disableCustomFontSizes }
-							withReset={ false }
-							withSlider
-							size="__unstable-large"
-						/>
-					</div>
-				</ToolsPanelItem>
+					<FontSizePicker
+						value={ currentFontSizeSlug || fontSize }
+						valueMode={ currentFontSizeSlug ? 'slug' : 'literal' }
+						onChange={ setFontSizeWithInheritedCommit }
+						fontSizes={ mergedFontSizes }
+						disableCustomFontSizes={ disableCustomFontSizes }
+						withReset={ false }
+						withSlider
+						size="__unstable-large"
+					/>
+				</InheritanceToolsPanelItem>
 			) }
 			{ hasAppearanceControl && (
-				<ToolsPanelItem
+				<InheritanceToolsPanelItem
+					{ ...inheritanceProps(
+						isFontAppearancePlaceholder,
+						hasFontAppearance() &&
+							( inheritedFontStyle !== undefined ||
+								inheritedFontWeight !== undefined )
+					) }
 					label={ appearanceControlLabel }
 					hasValue={ hasFontAppearance }
 					onDeselect={ resetFontAppearance }
 					isShownByDefault={ defaultControls.fontAppearance }
 					panelId={ panelId }
 				>
-					<div
-						className={
-							isFontAppearancePlaceholder
-								? 'is-inherited-placeholder'
-								: undefined
-						}
-					>
-						<FontAppearanceControl
-							value={ {
-								fontStyle,
-								fontWeight,
-							} }
-							onChange={ setFontAppearanceWithInheritedCommit }
-							hasFontStyles={ hasFontStyles }
-							hasFontWeights={ hasFontWeights }
-							fontFamilyFaces={ fontFamilyFaces }
-							size="__unstable-large"
-						/>
-					</div>
-				</ToolsPanelItem>
+					<FontAppearanceControl
+						value={ {
+							fontStyle,
+							fontWeight,
+						} }
+						onChange={ setFontAppearanceWithInheritedCommit }
+						hasFontStyles={ hasFontStyles }
+						hasFontWeights={ hasFontWeights }
+						fontFamilyFaces={ fontFamilyFaces }
+						size="__unstable-large"
+					/>
+				</InheritanceToolsPanelItem>
 			) }
 			{ hasLineHeightEnabled && (
-				<ToolsPanelItem
-					className="single-column"
+				<InheritanceToolsPanelItem
+					{ ...inheritanceProps(
+						isLineHeightPlaceholder,
+						hasLineHeight() && inheritedLineHeight !== undefined,
+						'single-column'
+					) }
 					label={ __( 'Line height' ) }
 					hasValue={ hasLineHeight }
 					onDeselect={ resetLineHeight }
@@ -799,22 +799,22 @@ export default function TypographyPanel( {
 						value={ localLineHeight }
 						onChange={ setLineHeight }
 						size="__unstable-large"
-						className={
-							isLineHeightPlaceholder
-								? 'is-inherited-placeholder'
-								: undefined
-						}
 						placeholder={
 							isLineHeightPlaceholder
 								? inheritedLineHeight
 								: undefined
 						}
 					/>
-				</ToolsPanelItem>
+				</InheritanceToolsPanelItem>
 			) }
 			{ hasLetterSpacingControl && (
-				<ToolsPanelItem
-					className="single-column"
+				<InheritanceToolsPanelItem
+					{ ...inheritanceProps(
+						isLetterSpacingPlaceholder,
+						hasLetterSpacing() &&
+							inheritedLetterSpacing !== undefined,
+						'single-column'
+					) }
 					label={ __( 'Letter spacing' ) }
 					hasValue={ hasLetterSpacing }
 					onDeselect={ resetLetterSpacing }
@@ -826,21 +826,20 @@ export default function TypographyPanel( {
 						onChange={ setLetterSpacing }
 						size="__unstable-large"
 						__unstableInputWidth="auto"
-						className={
-							isLetterSpacingPlaceholder
-								? 'is-inherited-placeholder'
-								: undefined
-						}
 						placeholder={
 							isLetterSpacingPlaceholder
 								? inheritedLetterSpacing
 								: undefined
 						}
 					/>
-				</ToolsPanelItem>
+				</InheritanceToolsPanelItem>
 			) }
 			{ hasTextIndentControl && (
-				<ToolsPanelItem
+				<InheritanceToolsPanelItem
+					{ ...inheritanceProps(
+						isTextIndentPlaceholder,
+						hasTextIndent() && inheritedTextIndent !== undefined
+					) }
 					label={ __( 'Line indent' ) }
 					hasValue={ hasTextIndent }
 					onDeselect={ resetTextIndent }
@@ -854,11 +853,6 @@ export default function TypographyPanel( {
 						__unstableInputWidth="auto"
 						withSlider
 						hasBottomMargin={ isGlobalStyles }
-						className={
-							isTextIndentPlaceholder
-								? 'is-inherited-placeholder'
-								: undefined
-						}
 						placeholder={
 							isTextIndentPlaceholder
 								? inheritedTextIndent
@@ -873,11 +867,15 @@ export default function TypographyPanel( {
 							help={ textIndentHelp }
 						/>
 					) }
-				</ToolsPanelItem>
+				</InheritanceToolsPanelItem>
 			) }
 			{ hasTextColumnsControl && (
-				<ToolsPanelItem
-					className="single-column"
+				<InheritanceToolsPanelItem
+					{ ...inheritanceProps(
+						isTextColumnsPlaceholder,
+						hasTextColumns() && inheritedTextColumns !== undefined,
+						'single-column'
+					) }
 					label={ __( 'Columns' ) }
 					hasValue={ hasTextColumns }
 					onDeselect={ resetTextColumns }
@@ -885,11 +883,6 @@ export default function TypographyPanel( {
 					panelId={ panelId }
 				>
 					<NumberControl
-						className={
-							isTextColumnsPlaceholder
-								? 'is-inherited-placeholder'
-								: undefined
-						}
 						label={ __( 'Columns' ) }
 						max={ MAX_TEXT_COLUMNS }
 						min={ MIN_TEXT_COLUMNS }
@@ -904,11 +897,16 @@ export default function TypographyPanel( {
 						value={ localTextColumns }
 						initialPosition={ 1 }
 					/>
-				</ToolsPanelItem>
+				</InheritanceToolsPanelItem>
 			) }
 			{ hasTextDecorationControl && (
-				<ToolsPanelItem
-					className="single-column"
+				<InheritanceToolsPanelItem
+					{ ...inheritanceProps(
+						isTextDecorationPlaceholder,
+						hasTextDecoration() &&
+							inheritedTextDecoration !== undefined,
+						'single-column'
+					) }
 					label={ __( 'Decoration' ) }
 					hasValue={ hasTextDecoration }
 					onDeselect={ resetTextDecoration }
@@ -920,17 +918,16 @@ export default function TypographyPanel( {
 						onChange={ setTextDecorationWithInheritedCommit }
 						size="__unstable-large"
 						__unstableInputWidth="auto"
-						className={
-							isTextDecorationPlaceholder
-								? 'is-inherited-placeholder'
-								: undefined
-						}
 					/>
-				</ToolsPanelItem>
+				</InheritanceToolsPanelItem>
 			) }
 			{ hasWritingModeControl && (
-				<ToolsPanelItem
-					className="single-column"
+				<InheritanceToolsPanelItem
+					{ ...inheritanceProps(
+						isWritingModePlaceholder,
+						hasWritingMode() && inheritedWritingMode !== undefined,
+						'single-column'
+					) }
 					label={ __( 'Orientation' ) }
 					hasValue={ hasWritingMode }
 					onDeselect={ resetWritingMode }
@@ -941,16 +938,16 @@ export default function TypographyPanel( {
 						value={ writingMode }
 						onChange={ setWritingModeWithInheritedCommit }
 						size="__unstable-large"
-						className={
-							isWritingModePlaceholder
-								? 'is-inherited-placeholder'
-								: undefined
-						}
 					/>
-				</ToolsPanelItem>
+				</InheritanceToolsPanelItem>
 			) }
 			{ hasTextTransformControl && (
-				<ToolsPanelItem
+				<InheritanceToolsPanelItem
+					{ ...inheritanceProps(
+						isTextTransformPlaceholder,
+						hasTextTransform() &&
+							inheritedTextTransform !== undefined
+					) }
 					label={ __( 'Letter case' ) }
 					hasValue={ hasTextTransform }
 					onDeselect={ resetTextTransform }
@@ -963,16 +960,15 @@ export default function TypographyPanel( {
 						showNone
 						isBlock
 						size="__unstable-large"
-						className={
-							isTextTransformPlaceholder
-								? 'is-inherited-placeholder'
-								: undefined
-						}
 					/>
-				</ToolsPanelItem>
+				</InheritanceToolsPanelItem>
 			) }
 			{ hasTextAlignmentControl && (
-				<ToolsPanelItem
+				<InheritanceToolsPanelItem
+					{ ...inheritanceProps(
+						isTextAlignPlaceholder,
+						hasTextAlign() && inheritedTextAlign !== undefined
+					) }
 					label={ __( 'Text alignment' ) }
 					hasValue={ hasTextAlign }
 					onDeselect={ resetTextAlign }
@@ -984,11 +980,6 @@ export default function TypographyPanel( {
 						onChange={ setTextAlignWithInheritedCommit }
 						options={ [ 'left', 'center', 'right', 'justify' ] }
 						size="__unstable-large"
-						className={
-							isTextAlignPlaceholder
-								? 'is-inherited-placeholder'
-								: undefined
-						}
 					/>
 
 					{ textAlign === 'justify' && (
@@ -1000,7 +991,7 @@ export default function TypographyPanel( {
 							</Notice>
 						</div>
 					) }
-				</ToolsPanelItem>
+				</InheritanceToolsPanelItem>
 			) }
 		</Wrapper>
 	);

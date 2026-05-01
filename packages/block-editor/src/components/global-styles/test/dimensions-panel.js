@@ -40,12 +40,9 @@ jest.mock( '../../use-settings', () => {
 					case 'spacing.units':
 						return [ '%', 'px', 'em', 'rem', 'vh', 'vw' ];
 					// `useSpacingSizes` reads these for SpacingSizesControl.
-					// The regression tests at the bottom of the file rely on
-					// these settings being populated; the per-control
-					// placeholder pattern tests above don't render
-					// SpacingSizesControl (no `spacingSizes` in their
-					// `settings`) so the slider hook doesn't reach this
-					// code path for them.
+					// The spacing slider tests rely on them being populated;
+					// other tests don't render SpacingSizesControl, so the
+					// slider hook doesn't reach this path for them.
 					case 'spacing.spacingSizes.custom':
 						return [];
 					case 'spacing.spacingSizes.theme':
@@ -66,12 +63,13 @@ jest.mock( '../../use-settings', () => {
 	};
 } );
 
-/*
- * Tests for inherited Global Styles values in `DimensionsPanel`.
+/**
+ * Tests for inherited values in `DimensionsPanel`.
  *
- * The panel renders inherited values as placeholders or at-rest selections
- * when the local value is empty, without copying inherited values into local
- * block attributes.
+ * The control's `value` prop reads from local `value` only; inherited values
+ * are surfaced through placeholders or at-rest selected options when local
+ * paths are empty. The wrapping `ToolsPanelItem` carries the inherited or
+ * local-override class hooks for label-level treatment.
  */
 
 const baseSettings = {
@@ -128,7 +126,7 @@ describe( 'DimensionsPanel — per-control placeholder pattern', () => {
 		expect( contentInput ).toHaveAttribute( 'placeholder', '720px' );
 		expect(
 			// eslint-disable-next-line testing-library/no-node-access
-			contentInput.closest( '.is-inherited-placeholder' )
+			contentInput.closest( '.is-inherited-from-global-styles' )
 		).not.toBeNull();
 	} );
 
@@ -156,7 +154,7 @@ describe( 'DimensionsPanel — per-control placeholder pattern', () => {
 		expect( contentInput ).not.toHaveAttribute( 'placeholder' );
 		expect(
 			// eslint-disable-next-line testing-library/no-node-access
-			contentInput.closest( '.is-inherited-placeholder' )
+			contentInput.closest( '.is-inherited-from-global-styles' )
 		).toBeNull();
 	} );
 
@@ -184,7 +182,7 @@ describe( 'DimensionsPanel — per-control placeholder pattern', () => {
 		expect( contentInput ).toHaveValue( 900 );
 		expect(
 			// eslint-disable-next-line testing-library/no-node-access
-			contentInput.closest( '.is-inherited-placeholder' )
+			contentInput.closest( '.is-inherited-from-global-styles' )
 		).toBeNull();
 
 		// wideSize: not locally set, placeholder active.
@@ -193,7 +191,7 @@ describe( 'DimensionsPanel — per-control placeholder pattern', () => {
 		expect( wideInput ).toHaveAttribute( 'placeholder', '1280px' );
 		expect(
 			// eslint-disable-next-line testing-library/no-node-access
-			wideInput.closest( '.is-inherited-placeholder' )
+			wideInput.closest( '.is-inherited-from-global-styles' )
 		).not.toBeNull();
 	} );
 
@@ -217,7 +215,7 @@ describe( 'DimensionsPanel — per-control placeholder pattern', () => {
 		expect( gapInput ).toHaveAttribute( 'placeholder', '1.5rem' );
 		expect(
 			// eslint-disable-next-line testing-library/no-node-access
-			gapInput.closest( '.is-inherited-placeholder' )
+			gapInput.closest( '.is-inherited-from-global-styles' )
 		).not.toBeNull();
 	} );
 
@@ -245,7 +243,7 @@ describe( 'DimensionsPanel — per-control placeholder pattern', () => {
 		expect( gapInput ).not.toHaveAttribute( 'placeholder' );
 		expect(
 			// eslint-disable-next-line testing-library/no-node-access
-			gapInput.closest( '.is-inherited-placeholder' )
+			gapInput.closest( '.is-inherited-from-global-styles' )
 		).toBeNull();
 	} );
 
@@ -310,7 +308,7 @@ describe( 'DimensionsPanel — per-control placeholder pattern', () => {
 		expect( paddingAllSides ).toHaveAttribute( 'placeholder', '16px' );
 		expect(
 			// eslint-disable-next-line testing-library/no-node-access
-			paddingAllSides.closest( '.is-inherited-placeholder' )
+			paddingAllSides.closest( '.is-inherited-from-global-styles' )
 		).not.toBeNull();
 	} );
 
@@ -343,7 +341,7 @@ describe( 'DimensionsPanel — per-control placeholder pattern', () => {
 		expect( paddingAllSides ).toHaveAttribute( 'placeholder', '20px' );
 		expect(
 			// eslint-disable-next-line testing-library/no-node-access
-			paddingAllSides.closest( '.is-inherited-placeholder' )
+			paddingAllSides.closest( '.is-inherited-from-global-styles' )
 		).not.toBeNull();
 	} );
 
@@ -376,7 +374,7 @@ describe( 'DimensionsPanel — per-control placeholder pattern', () => {
 		expect( paddingAllSides ).not.toHaveAttribute( 'placeholder' );
 		expect(
 			// eslint-disable-next-line testing-library/no-node-access
-			paddingAllSides.closest( '.is-inherited-placeholder' )
+			paddingAllSides.closest( '.is-inherited-from-global-styles' )
 		).toBeNull();
 	} );
 
@@ -406,11 +404,12 @@ describe( 'DimensionsPanel — per-control placeholder pattern', () => {
 		expect( paddingAllSides ).not.toHaveAttribute( 'placeholder' );
 		expect(
 			// eslint-disable-next-line testing-library/no-node-access
-			paddingAllSides.closest( '.is-inherited-placeholder' )
+			paddingAllSides.closest( '.is-inherited-from-global-styles' )
 		).toBeNull();
 	} );
 
-	// DimensionControl-based inputs render the custom-value path of
+	// DimensionControl-based inputs (minHeight, height,
+	// minWidth, width). These render the custom-value path of
 	// PresetInputControl when no presets are configured.
 	it( 'renders an inherited minHeight as placeholder on the DimensionControl when `value` is empty', () => {
 		const inheritedValue = {
@@ -440,7 +439,7 @@ describe( 'DimensionsPanel — per-control placeholder pattern', () => {
 		expect( minHeightInput ).toHaveAttribute( 'placeholder', '320px' );
 		expect(
 			// eslint-disable-next-line testing-library/no-node-access
-			minHeightInput.closest( '.is-inherited-placeholder' )
+			minHeightInput.closest( '.is-inherited-from-global-styles' )
 		).not.toBeNull();
 	} );
 
@@ -475,7 +474,7 @@ describe( 'DimensionsPanel — per-control placeholder pattern', () => {
 		expect( minHeightInput ).not.toHaveAttribute( 'placeholder' );
 		expect(
 			// eslint-disable-next-line testing-library/no-node-access
-			minHeightInput.closest( '.is-inherited-placeholder' )
+			minHeightInput.closest( '.is-inherited-from-global-styles' )
 		).toBeNull();
 	} );
 
@@ -504,7 +503,7 @@ describe( 'DimensionsPanel — per-control placeholder pattern', () => {
 		expect( widthInput ).toHaveAttribute( 'placeholder', '640px' );
 		expect(
 			// eslint-disable-next-line testing-library/no-node-access
-			widthInput.closest( '.is-inherited-placeholder' )
+			widthInput.closest( '.is-inherited-from-global-styles' )
 		).not.toBeNull();
 	} );
 
@@ -562,8 +561,8 @@ describe( 'DimensionsPanel — per-control placeholder pattern', () => {
 		expect( lastCall?.dimensions?.width ).toBeUndefined();
 	} );
 
-	// Aspect ratio uses the native select path.
-	it( 'preselects the inherited aspectRatio option as at-rest with synced-color treatment', () => {
+	// aspectRatio (native <select> archetype).
+	it( 'preselects the inherited aspectRatio option as at-rest with inherited-value treatment', () => {
 		const inheritedValue = {
 			dimensions: { aspectRatio: '16/9' },
 		};
@@ -589,7 +588,7 @@ describe( 'DimensionsPanel — per-control placeholder pattern', () => {
 		// archetypes.
 		expect(
 			// eslint-disable-next-line testing-library/no-node-access
-			aspectSelect.closest( '.is-inherited-placeholder' )
+			aspectSelect.closest( '.is-inherited-from-global-styles' )
 		).not.toBeNull();
 	} );
 
@@ -617,7 +616,7 @@ describe( 'DimensionsPanel — per-control placeholder pattern', () => {
 		expect( aspectSelect ).toHaveValue( '1' );
 		expect(
 			// eslint-disable-next-line testing-library/no-node-access
-			aspectSelect.closest( '.is-inherited-placeholder' )
+			aspectSelect.closest( '.is-inherited-from-global-styles' )
 		).toBeNull();
 	} );
 
@@ -682,7 +681,7 @@ describe( 'DimensionsPanel — per-control placeholder pattern', () => {
 	 * slider appeared 'stuck'. The fix merges local-then-inherited
 	 * before passing to the chip slider / axial BoxControl.
 	 */
-	it( 'SpacingSizesControl padding reflects the local value when set, ignoring the inherited fallback', () => {
+	it( 'SpacingSizesControl (padding) reflects the local value when set, ignoring the inherited fallback', () => {
 		const inheritedValue = {
 			spacing: { padding: '10px' },
 		};
@@ -735,7 +734,7 @@ describe( 'DimensionsPanel — per-control placeholder pattern', () => {
 		).toBe( true );
 	} );
 
-	it( 'SpacingSizesControl margin reflects the local value when set, ignoring the inherited fallback', () => {
+	it( 'SpacingSizesControl (margin) reflects the local value when set, ignoring the inherited fallback', () => {
 		const inheritedValue = {
 			spacing: { margin: '8px' },
 		};
@@ -782,7 +781,7 @@ describe( 'DimensionsPanel — per-control placeholder pattern', () => {
 		).toBe( true );
 	} );
 
-	it( 'SpacingSizesControl padding renders the inherited value at-rest when the local path is empty', () => {
+	it( 'SpacingSizesControl (padding) renders the inherited value at-rest when the local path is empty', () => {
 		const inheritedValue = {
 			spacing: { padding: 'var:preset|spacing|20' },
 		};
@@ -820,7 +819,7 @@ describe( 'DimensionsPanel — per-control placeholder pattern', () => {
 		expect( paddingSliders.every( ( s ) => s.value === '1' ) ).toBe( true );
 	} );
 
-	it( 'SpacingSizesControl padding commits to local on slider activation and the displayed value follows the new local value', async () => {
+	it( 'SpacingSizesControl (padding) commits to local on slider activation and the displayed value follows the new local value', async () => {
 		const { fireEvent } = require( '@testing-library/react' );
 		const settingsWithSpacingPresets = {
 			...baseSettings,

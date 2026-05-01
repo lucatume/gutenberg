@@ -1,0 +1,87 @@
+// Inherited Global Styles values — visual treatment for inspector
+// control labels.
+//
+// `.is-inherited-from-global-styles` marks controls that are displaying
+// inherited values. `.has-local-override-from-global-styles` marks controls
+// that locally override inherited values. The states are mutually exclusive.
+
+.is-inherited-from-global-styles {
+	.components-base-control__label,
+	.block-editor-panel-color-gradient-settings__color-name {
+		color: var(--wp-block-synced-color);
+	}
+}
+
+// The Tooltip anchor wrapper. Default block flow so Ariakit has a
+// real bounding rect; otherwise transparent.
+.global-styles-inheritance-tooltip-anchor {
+	display: block;
+}
+
+// Local-override interactive dot menu — portaled into the label DOM
+// node so the trigger sits inline with the label text. The
+// `<Dropdown>` outer is a div, so we force it to inline-flex to keep
+// it on the same line as the label.
+.has-local-override-from-global-styles__menu {
+	display: inline-flex;
+	align-items: center;
+	vertical-align: middle;
+	margin-inline-start: 6px;
+
+	// `<Dropdown>` itself does not preserve text-transform overrides
+	// from its parent label. Belt-and-braces: ensure the trigger
+	// button never inherits an uppercase transform from a label that
+	// happens to use one (e.g. some uses of `BaseControl` in third-
+	// party blocks).
+	text-transform: none;
+	letter-spacing: normal;
+}
+
+// The dot toggle button. Override the default 24x24 IconButton
+// chrome so the trigger appears as a tight inline circle.
+.has-local-override-from-global-styles__toggle {
+	display: inline-flex !important;
+	align-items: center;
+	justify-content: center;
+	min-width: 14px !important;
+	width: 14px !important;
+	height: 14px !important;
+	padding: 0 !important;
+	border-radius: 50% !important;
+	background: transparent !important;
+	box-shadow: none !important;
+
+	// Don't let any Button hover ring expand the bounding box and
+	// shift sibling label text.
+	&:hover,
+	&:focus,
+	&[aria-expanded="true"] {
+		background: transparent !important;
+	}
+
+	&:focus-visible {
+		// Inset focus ring so it doesn't push other text around.
+		outline: 1.5px solid var(--wp-admin-theme-color, #007cba);
+		outline-offset: 1px;
+	}
+
+	// Some `<label>` rules style descendant text/buttons (legacy
+	// pre-existing CSS). Reset to the design-system pointer token
+	// for interactive controls.
+	cursor: var(--wpds-cursor-control);
+}
+
+.has-local-override-from-global-styles__dot {
+	display: block;
+	width: 8px;
+	height: 8px;
+	background-color: var(--wp-admin-theme-color, #007cba);
+	border-radius: 50%;
+	transition: transform 0.1s ease-out;
+}
+
+.has-local-override-from-global-styles__toggle:hover .has-local-override-from-global-styles__dot,
+.has-local-override-from-global-styles__toggle:focus .has-local-override-from-global-styles__dot,
+.has-local-override-from-global-styles__toggle[aria-expanded="true"] .has-local-override-from-global-styles__dot {
+	transform: scale(1.2);
+}

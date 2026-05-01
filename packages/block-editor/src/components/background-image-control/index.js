@@ -194,7 +194,6 @@ function BackgroundControlsPanel( {
 	hasImageValue,
 	onReset,
 	containerRef,
-	isInheritedPlaceholder = false,
 } ) {
 	if ( ! hasImageValue ) {
 		return;
@@ -205,9 +204,6 @@ function BackgroundControlsPanel( {
 	return (
 		<Dropdown
 			popoverProps={ BACKGROUND_POPOVER_PROPS }
-			className={ clsx( {
-				'is-inherited-placeholder': isInheritedPlaceholder,
-			} ) }
 			renderToggle={ ( { onToggle, isOpen } ) => {
 				const toggleProps = {
 					onClick: onToggle,
@@ -438,9 +434,10 @@ function BackgroundSizeControls( {
 	inheritedValue,
 	defaultValues,
 } ) {
-	// Read local and inherited values separately so each sub-control can show
-	// the at-rest cue when its local value is empty and inherited data supplies
-	// the displayed state.
+	/*
+	 * Read local and inherited values separately so each sub-control can
+	 * show the inherited value while marking the control as inherited.
+	 */
 	const localSizeValue = style?.background?.backgroundSize;
 	const localRepeatValue = style?.background?.backgroundRepeat;
 	const localPositionValue = style?.background?.backgroundPosition;
@@ -460,17 +457,6 @@ function BackgroundSizeControls( {
 	const isUploadedImage = style?.background?.backgroundImage?.id;
 	const positionValue = localPositionValue || inheritedPositionValue;
 	const attachmentValue = localAttachmentValue || inheritedAttachmentValue;
-
-	const isSizePlaceholder =
-		localSizeValue === undefined && inheritedSizeValue !== undefined;
-	const isRepeatPlaceholder =
-		localRepeatValue === undefined && inheritedRepeatValue !== undefined;
-	const isPositionPlaceholder =
-		localPositionValue === undefined &&
-		inheritedPositionValue !== undefined;
-	const isAttachmentPlaceholder =
-		localAttachmentValue === undefined &&
-		inheritedAttachmentValue !== undefined;
 
 	/*
 	 * Set default values for uploaded images.
@@ -588,35 +574,18 @@ function BackgroundSizeControls( {
 
 	return (
 		<VStack spacing={ 3 } className="single-column">
-			<div
-				className={ clsx(
-					'block-editor-global-styles-background-panel__focal-point',
-					{
-						'is-inherited-placeholder': isPositionPlaceholder,
-					}
-				) }
-			>
-				<FocalPointPicker
-					label={ __( 'Focal point' ) }
-					url={ imageValue }
-					value={ backgroundPositionToCoords(
-						backgroundPositionValue
-					) }
-					onChange={ updateBackgroundPosition }
-				/>
-			</div>
+			<FocalPointPicker
+				label={ __( 'Focal point' ) }
+				url={ imageValue }
+				value={ backgroundPositionToCoords( backgroundPositionValue ) }
+				onChange={ updateBackgroundPosition }
+			/>
 			<ToggleControl
-				className={ clsx( {
-					'is-inherited-placeholder': isAttachmentPlaceholder,
-				} ) }
 				label={ __( 'Fixed background' ) }
 				checked={ attachmentValue === 'fixed' }
 				onChange={ toggleScrollWithPage }
 			/>
 			<ToggleGroupControl
-				className={ clsx( {
-					'is-inherited-placeholder': isSizePlaceholder,
-				} ) }
 				size="__unstable-large"
 				label={ __( 'Size' ) }
 				value={ currentValueForToggle }
@@ -653,9 +622,6 @@ function BackgroundSizeControls( {
 			</ToggleGroupControl>
 			<HStack justify="flex-start" spacing={ 2 } as="span">
 				<UnitControl
-					className={ clsx( {
-						'is-inherited-placeholder': isSizePlaceholder,
-					} ) }
 					aria-label={ __( 'Background image width' ) }
 					onChange={ updateBackgroundSize }
 					value={ sizeValue }
@@ -669,9 +635,6 @@ function BackgroundSizeControls( {
 					}
 				/>
 				<ToggleControl
-					className={ clsx( {
-						'is-inherited-placeholder': isRepeatPlaceholder,
-					} ) }
 					label={ __( 'Repeat' ) }
 					checked={ repeatCheckedValue }
 					onChange={ toggleIsRepeated }
@@ -689,7 +652,9 @@ export default function BackgroundImagePanel( {
 	settings,
 	defaultValues = {},
 } ) {
-	// Resolve inherited background ref pointers.
+	/*
+	 * Resolve inherited `ref` pointers for background controls.
+	 */
 	const { globalStyles, _links } = useSelect( ( select ) => {
 		const { getSettings } = select( blockEditorStore );
 		const _settings = getSettings();
@@ -731,13 +696,6 @@ export default function BackgroundImagePanel( {
 		hasBackgroundImageValue( value ) ||
 		hasBackgroundImageValue( resolvedInheritedValue );
 
-	// At rest when local has no image but inherited does. The `none` sentinel
-	// represents an explicit local removal, so it suppresses inheritance.
-	const isInheritedPlaceholder =
-		! hasBackgroundImageValue( value ) &&
-		value?.background?.backgroundImage !== 'none' &&
-		hasBackgroundImageValue( resolvedInheritedValue );
-
 	const imageValue =
 		value?.background?.backgroundImage ||
 		inheritedValue?.background?.backgroundImage;
@@ -759,9 +717,6 @@ export default function BackgroundImagePanel( {
 				'block-editor-global-styles-background-panel__inspector-media-replace-container',
 				{
 					'is-open': isDropDownOpen,
-					'is-inherited-placeholder':
-						isInheritedPlaceholder &&
-						! shouldShowBackgroundImageControls,
 				}
 			) }
 		>
@@ -774,7 +729,6 @@ export default function BackgroundImagePanel( {
 					hasImageValue={ hasImageValue }
 					onReset={ resetBackground }
 					containerRef={ containerRef }
-					isInheritedPlaceholder={ isInheritedPlaceholder }
 				>
 					<VStack spacing={ 3 } className="single-column">
 						<BackgroundImageControls

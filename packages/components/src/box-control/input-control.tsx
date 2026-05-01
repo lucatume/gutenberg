@@ -87,7 +87,6 @@ export default function BoxInputControl( {
 	min = 0,
 	presets,
 	presetKey,
-	className: classNameProp,
 	placeholder: placeholderProp,
 	...props
 }: BoxControlInputControlProps ) {
@@ -210,11 +209,7 @@ export default function BoxInputControl( {
 							min={ min }
 							__shouldNotWarnDeprecated36pxSize
 							__next40pxDefaultSize={ __next40pxDefaultSize }
-							className={
-								classNameProp
-									? `component-box-control__unit-control ${ classNameProp }`
-									: 'component-box-control__unit-control'
-							}
+							className="component-box-control__unit-control"
 							id={ inputId }
 							isPressEnterToChange
 							disableUnits={ isMixed || isMixedUnit }

@@ -10,8 +10,17 @@ import userEvent from '@testing-library/user-event';
 import ColorPanel from '../color-panel';
 
 /**
- * Tests the per-control placeholder pattern in `ColorPanel` for top-level
- * and element-scoped color controls.
+ * Tests for the inherited Global Styles label treatment in `ColorPanel`.
+ * The visual treatment lands on the parent `ToolsPanelItem` of each color slot via the
+ * `.is-inherited-from-global-styles` /
+ * `.has-local-override-from-global-styles` class hooks. The inner
+ * `Dropdown` carries no special className for inheritance state.
+ *
+ * The panel renders one `ColorPanelDropdown` per top-level slot
+ * (text / background / link / element-scoped colors); each dropdown
+ * has one or more `ColorPanelTab`s exposing `ColorGradientControl`.
+ * The `ColorPanelTab.onChange` interceptor remains in place so clicking the active inherited swatch commits
+ * the inherited value to local rather than clearing the slot.
  */
 
 const baseSettings = {
@@ -32,9 +41,9 @@ const baseSettings = {
 	},
 };
 
-describe( 'ColorPanel — per-control placeholder pattern', () => {
+describe( 'ColorPanel — inherited Global Styles label treatment', () => {
 	describe( 'Text color', () => {
-		it( 'applies the at-rest className to the dropdown when local is unset and inherited is defined', () => {
+		it( 'applies the inherited-label className when local is unset and inherited is defined', () => {
 			const inheritedValue = { color: { text: '#ff0000' } };
 
 			const { container } = render(
@@ -52,10 +61,13 @@ describe( 'ColorPanel — per-control placeholder pattern', () => {
 				'.block-editor-tools-panel-color-gradient-settings__dropdown'
 			);
 			expect( dropdown ).not.toBeNull();
-			expect( dropdown ).toHaveClass( 'is-inherited-placeholder' );
+			expect(
+				// eslint-disable-next-line testing-library/no-node-access
+				dropdown.closest( '.is-inherited-from-global-styles' )
+			).not.toBeNull();
 		} );
 
-		it( 'does not apply the at-rest className when a local text color is set', () => {
+		it( 'applies the local-override className when a local text color is set', () => {
 			const inheritedValue = { color: { text: '#ff0000' } };
 			const value = { color: { text: '#0000ff' } };
 
@@ -70,13 +82,21 @@ describe( 'ColorPanel — per-control placeholder pattern', () => {
 			);
 
 			// eslint-disable-next-line testing-library/no-container, testing-library/no-node-access
-			const dropdowns = container.querySelectorAll(
-				'.block-editor-tools-panel-color-gradient-settings__dropdown.is-inherited-placeholder'
+			const inheritedItems = container.querySelectorAll(
+				'.is-inherited-from-global-styles'
 			);
 			// Background and Link items have no inherited value here,
-			// so neither carries the at-rest class. Text has a local
+			// so neither carries the inherited class. Text has a local
 			// value, so it doesn't either.
-			expect( dropdowns ).toHaveLength( 0 );
+			expect( inheritedItems ).toHaveLength( 0 );
+
+			// And the local-override class is present at least once
+			// (on the Text slot's ToolsPanelItem).
+			// eslint-disable-next-line testing-library/no-container, testing-library/no-node-access
+			const overrideItems = container.querySelectorAll(
+				'.has-local-override-from-global-styles'
+			);
+			expect( overrideItems.length ).toBeGreaterThanOrEqual( 1 );
 		} );
 
 		it( 'does not invoke onChange on mount when only inherited colors are present (display-without-commit)', () => {
@@ -101,7 +121,7 @@ describe( 'ColorPanel — per-control placeholder pattern', () => {
 	} );
 
 	describe( 'Background color', () => {
-		it( 'applies the at-rest className when only inherited background is defined', () => {
+		it( 'applies the inherited-label className when only inherited background is defined', () => {
 			const inheritedValue = {
 				color: { background: '#00ff00' },
 			};
@@ -117,15 +137,15 @@ describe( 'ColorPanel — per-control placeholder pattern', () => {
 			);
 
 			// eslint-disable-next-line testing-library/no-container, testing-library/no-node-access
-			const dropdowns = container.querySelectorAll(
-				'.block-editor-tools-panel-color-gradient-settings__dropdown.is-inherited-placeholder'
+			const inheritedItems = container.querySelectorAll(
+				'.is-inherited-from-global-styles'
 			);
-			// Only the Background dropdown should carry the at-rest
+			// Only the Background slot should carry the inherited
 			// class; Text and Link have no inherited value.
-			expect( dropdowns ).toHaveLength( 1 );
+			expect( inheritedItems ).toHaveLength( 1 );
 		} );
 
-		it( 'does not apply the at-rest className when local background overrides the inherited', () => {
+		it( 'applies the local-override className when local background overrides the inherited', () => {
 			const inheritedValue = {
 				color: { background: '#00ff00' },
 			};
@@ -142,15 +162,21 @@ describe( 'ColorPanel — per-control placeholder pattern', () => {
 			);
 
 			// eslint-disable-next-line testing-library/no-container, testing-library/no-node-access
-			const dropdowns = container.querySelectorAll(
-				'.block-editor-tools-panel-color-gradient-settings__dropdown.is-inherited-placeholder'
+			const inheritedItems = container.querySelectorAll(
+				'.is-inherited-from-global-styles'
 			);
-			expect( dropdowns ).toHaveLength( 0 );
+			expect( inheritedItems ).toHaveLength( 0 );
+
+			// eslint-disable-next-line testing-library/no-container, testing-library/no-node-access
+			const overrideItems = container.querySelectorAll(
+				'.has-local-override-from-global-styles'
+			);
+			expect( overrideItems.length ).toBeGreaterThanOrEqual( 1 );
 		} );
 	} );
 
 	describe( 'Link color', () => {
-		it( 'applies the at-rest className when inherited link is defined and local link is fully unset', () => {
+		it( 'applies the inherited-label className when inherited link is defined and local link is fully unset', () => {
 			const inheritedValue = {
 				elements: { link: { color: { text: '#0000ff' } } },
 			};
@@ -166,13 +192,13 @@ describe( 'ColorPanel — per-control placeholder pattern', () => {
 			);
 
 			// eslint-disable-next-line testing-library/no-container, testing-library/no-node-access
-			const dropdowns = container.querySelectorAll(
-				'.block-editor-tools-panel-color-gradient-settings__dropdown.is-inherited-placeholder'
+			const inheritedItems = container.querySelectorAll(
+				'.is-inherited-from-global-styles'
 			);
-			expect( dropdowns ).toHaveLength( 1 );
+			expect( inheritedItems ).toHaveLength( 1 );
 		} );
 
-		it( 'does not apply the at-rest className when local link.text is set', () => {
+		it( 'applies the local-override className when local link.text is set', () => {
 			const inheritedValue = {
 				elements: { link: { color: { text: '#0000ff' } } },
 			};
@@ -191,15 +217,21 @@ describe( 'ColorPanel — per-control placeholder pattern', () => {
 			);
 
 			// eslint-disable-next-line testing-library/no-container, testing-library/no-node-access
-			const dropdowns = container.querySelectorAll(
-				'.block-editor-tools-panel-color-gradient-settings__dropdown.is-inherited-placeholder'
+			const inheritedItems = container.querySelectorAll(
+				'.is-inherited-from-global-styles'
 			);
-			expect( dropdowns ).toHaveLength( 0 );
+			expect( inheritedItems ).toHaveLength( 0 );
+
+			// eslint-disable-next-line testing-library/no-container, testing-library/no-node-access
+			const overrideItems = container.querySelectorAll(
+				'.has-local-override-from-global-styles'
+			);
+			expect( overrideItems.length ).toBeGreaterThanOrEqual( 1 );
 		} );
 	} );
 
-	describe( 'Display-without-commit and accept inherited value', () => {
-		it( 'commits the inherited value when the user clicks the active swatch at rest', async () => {
+	describe( 'Display-without-commit behavior', () => {
+		it( 'commits the inherited value when the user clicks the active swatch at-rest', async () => {
 			const user = userEvent.setup();
 			const onChange = jest.fn();
 			const inheritedValue = {
@@ -233,8 +265,8 @@ describe( 'ColorPanel — per-control placeholder pattern', () => {
 
 			expect( onChange ).toHaveBeenCalled();
 			const last = onChange.mock.calls.at( -1 )[ 0 ];
-			// The interceptor commits the inherited value, encoded as the `red`
-			// preset slug.
+			// The interceptor commits the inherited
+			// value (encoded as the `red` preset slug).
 			expect( last?.color?.text ).toBe( 'var:preset|color|red' );
 		} );
 

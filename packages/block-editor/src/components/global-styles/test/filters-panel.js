@@ -10,7 +10,12 @@ import userEvent from '@testing-library/user-event';
 import FiltersPanel from '../filters-panel';
 
 /**
- * Tests inherited duotone behavior for the Filters panel.
+ * Tests for the inherited Global Styles label treatment in `FiltersPanel`.
+ * The panel hosts a single duotone slot rendered as a `Dropdown` whose toggle
+ * shows a `DuotoneSwatch`.
+ *
+ * Display-without-commit behavior is preserved: clicking the preselected
+ * inherited duotone preset commits that value rather than clearing the slot.
  */
 
 const baseSettings = {
@@ -40,8 +45,8 @@ const baseSettings = {
 	},
 };
 
-describe( 'FiltersPanel inherited values', () => {
-	it( 'applies the at-rest className to the dropdown when local duotone is unset and inherited is defined', () => {
+describe( 'FiltersPanel — visual treatment and display-without-commit', () => {
+	it( 'applies the at-rest className to the ToolsPanelItem when local duotone is unset and inherited is defined', () => {
 		const inheritedValue = {
 			filter: { duotone: [ '#000000', '#ffffff' ] },
 		};
@@ -57,14 +62,13 @@ describe( 'FiltersPanel inherited values', () => {
 		);
 
 		// eslint-disable-next-line testing-library/no-container, testing-library/no-node-access
-		const dropdown = container.querySelector(
-			'.block-editor-global-styles-filters-panel__dropdown'
+		const item = container.querySelector(
+			'.components-tools-panel-item.is-inherited-from-global-styles'
 		);
-		expect( dropdown ).not.toBeNull();
-		expect( dropdown ).toHaveClass( 'is-inherited-placeholder' );
+		expect( item ).not.toBeNull();
 	} );
 
-	it( 'does not apply the at-rest className when local duotone is set', () => {
+	it( 'applies the local-override className to the ToolsPanelItem when local duotone is set over an inherited value', () => {
 		const inheritedValue = {
 			filter: { duotone: [ '#000000', '#ffffff' ] },
 		};
@@ -83,10 +87,10 @@ describe( 'FiltersPanel inherited values', () => {
 		);
 
 		// eslint-disable-next-line testing-library/no-container, testing-library/no-node-access
-		const dropdown = container.querySelector(
-			'.block-editor-global-styles-filters-panel__dropdown'
+		const item = container.querySelector(
+			'.components-tools-panel-item.has-local-override-from-global-styles'
 		);
-		expect( dropdown ).not.toHaveClass( 'is-inherited-placeholder' );
+		expect( item ).not.toBeNull();
 	} );
 
 	it( 'does not invoke onChange on mount when only inherited duotone is present (display-without-commit)', () => {

@@ -6,7 +6,6 @@ import {
 	__experimentalHasSplitBorders as hasSplitBorders,
 	__experimentalIsDefinedBorder as isDefinedBorder,
 	__experimentalToolsPanel as ToolsPanel,
-	__experimentalToolsPanelItem as ToolsPanelItem,
 	BaseControl,
 } from '@wordpress/components';
 import { useCallback, useMemo } from '@wordpress/element';
@@ -22,6 +21,7 @@ import { useToolsPanelDropdownMenuProps } from './utils';
 import { setImmutably } from '../../utils/object';
 import { useBorderPanelLabel } from '../../hooks/border';
 import { ShadowPopover, useShadowPresets } from './shadow-panel-components';
+import { getInheritanceProps, InheritanceToolsPanelItem } from './inheritance';
 
 export function useHasBorderPanel( settings ) {
 	const controls = Object.values( useHasBorderPanelControls( settings ) );
@@ -103,12 +103,17 @@ export default function BorderPanel( {
 	panelId,
 	name,
 	defaultControls = DEFAULT_CONTROLS,
+	showInheritanceLabelIndicators = true,
 } ) {
 	const colors = useColorsPerOrigin( settings );
 	const decodeValue = useCallback(
 		( rawValue ) => getValueFromVariable( { settings }, '', rawValue ),
 		[ settings ]
 	);
+	const inheritanceProps = ( isInherited, hasLocalOverride, className ) =>
+		showInheritanceLabelIndicators
+			? getInheritanceProps( isInherited, hasLocalOverride, className )
+			: {};
 	const encodeColorValue = ( colorValue ) => {
 		const allColors = colors.flatMap(
 			( { colors: originColors } ) => originColors
@@ -308,9 +313,22 @@ export default function BorderPanel( {
 		}
 
 		// As radius is maintained separately to color, style, and width
-		// maintain its value. Undefined values here will be cleaned when
+		// maintain its value. Read from `value` (local-only) rather than
+		// `border` (the merged display value), otherwise an inherited
+		// radius gets baked into the local override every time the
+		// user touches color/style/width — which both pollutes the
+		// stored attribute and causes the radius `ToolsPanelItem` to
+		// flip into the `has-local-override-from-global-styles` state
+		// even though the user never customised the radius. The
+		// `radius` key must come after the spread so it wins over any
+		// `radius` field forwarded by `BorderBoxControl`'s inner
+		// `BorderControl`, which merges its incoming `value` with the
+		// changed prop. Undefined values here will be cleaned when
 		// global styles are saved.
-		setBorder( { radius: border?.radius, ...updatedBorder } );
+		setBorder( {
+			...updatedBorder,
+			radius: value?.border?.radius,
+		} );
 	};
 
 	const resetAllFilter = useCallback( ( previousValue ) => {
@@ -345,19 +363,35 @@ export default function BorderPanel( {
 			label={ label }
 		>
 			{ ( showBorderWidth || showBorderColor ) && (
-				<ToolsPanelItem
+				<InheritanceToolsPanelItem
+					{ ...inheritanceProps(
+						isBorderPlaceholder,
+						isDefinedBorder( value?.border ) &&
+							!! inheritedBorder &&
+							isDefinedBorder( inheritedBorder )
+					) }
 					hasValue={ () => isDefinedBorder( value?.border ) }
 					label={ __( 'Border' ) }
 					onDeselect={ () => resetBorder() }
 					isShownByDefault={ showBorderByDefault }
 					panelId={ panelId }
 				>
+					{ showInheritanceLabelIndicators && (
+						// Render the visible label as `BaseControl.VisualLabel`
+						// (which produces `.components-base-control__label`)
+						// rather than passing `label` to `BorderBoxControl`,
+						// whose internal `<StyledLabel>` carries no stable
+						// className. The inheritance CSS treatment and the
+						// portaled local-override dot both target
+						// `.components-base-control__label`, so the visible
+						// "Border" label has to be a `BaseControl` label for
+						// the synced-purple text and blue-dot menu to land on
+						// the Border control instead of being silently lost.
+						<BaseControl.VisualLabel as="legend">
+							{ __( 'Border' ) }
+						</BaseControl.VisualLabel>
+					) }
 					<BorderBoxControl
-						className={
-							isBorderPlaceholder
-								? 'is-inherited-placeholder'
-								: undefined
-						}
 						colors={ colors }
 						enableAlpha
 						enableStyle={ showBorderStyle }
@@ -367,13 +401,16 @@ export default function BorderPanel( {
 						value={ border }
 						__experimentalIsRenderedInSidebar
 						size="__unstable-large"
-						hideLabelFromVision={ ! hasShadowControl }
-						label={ __( 'Border' ) }
 					/>
-				</ToolsPanelItem>
+				</InheritanceToolsPanelItem>
 			) }
 			{ showBorderRadius && (
-				<ToolsPanelItem
+				<InheritanceToolsPanelItem
+					{ ...inheritanceProps(
+						isBorderRadiusPlaceholder &&
+							borderRadiusPlaceholder !== undefined,
+						hasBorderRadius() && inheritedBorderRadius !== undefined
+					) }
 					hasValue={ hasBorderRadius }
 					label={ __( 'Radius' ) }
 					onDeselect={ () => setBorderRadius( undefined ) }
@@ -381,11 +418,6 @@ export default function BorderPanel( {
 					panelId={ panelId }
 				>
 					<BorderRadiusControl
-						className={
-							isBorderRadiusPlaceholder
-								? 'is-inherited-placeholder'
-								: undefined
-						}
 						placeholder={ borderRadiusPlaceholder }
 						presets={ settings?.border?.radiusSizes }
 						values={ localBorderRadius }
@@ -393,10 +425,14 @@ export default function BorderPanel( {
 							setBorderRadius( newValue || undefined );
 						} }
 					/>
-				</ToolsPanelItem>
+				</InheritanceToolsPanelItem>
 			) }
 			{ hasShadowControl && (
-				<ToolsPanelItem
+				<InheritanceToolsPanelItem
+					{ ...inheritanceProps(
+						isShadowPlaceholder,
+						hasShadow() && inheritedShadow !== undefined
+					) }
 					label={ __( 'Shadow' ) }
 					hasValue={ hasShadow }
 					onDeselect={ resetShadow }
@@ -410,16 +446,11 @@ export default function BorderPanel( {
 					) : null }
 
 					<ShadowPopover
-						className={
-							isShadowPlaceholder
-								? 'is-inherited-placeholder'
-								: undefined
-						}
 						shadow={ shadow }
 						onShadowChange={ setShadowWithInheritedCommit }
 						settings={ settings }
 					/>
-				</ToolsPanelItem>
+				</InheritanceToolsPanelItem>
 			) }
 		</Wrapper>
 	);

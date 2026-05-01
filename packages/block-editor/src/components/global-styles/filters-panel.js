@@ -8,7 +8,6 @@ import clsx from 'clsx';
  */
 import {
 	__experimentalToolsPanel as ToolsPanel,
-	__experimentalToolsPanelItem as ToolsPanelItem,
 	__experimentalHStack as HStack,
 	__experimentalZStack as ZStack,
 	__experimentalDropdownContentWrapper as DropdownContentWrapper,
@@ -31,6 +30,7 @@ import { getValueFromVariable } from '@wordpress/global-styles-engine';
  */
 import { useToolsPanelDropdownMenuProps } from './utils';
 import { setImmutably } from '../../utils/object';
+import { getInheritanceProps, InheritanceToolsPanelItem } from './inheritance';
 
 const EMPTY_ARRAY = [];
 function useMultiOriginColorPresets(
@@ -172,9 +172,14 @@ export default function FiltersPanel( {
 	settings,
 	panelId,
 	defaultControls = DEFAULT_CONTROLS,
+	showInheritanceLabelIndicators = true,
 } ) {
 	const decodeValue = ( rawValue ) =>
 		getValueFromVariable( { settings }, '', rawValue );
+	const inheritanceProps = ( isInherited, hasLocalOverride, className ) =>
+		showInheritanceLabelIndicators
+			? getInheritanceProps( isInherited, hasLocalOverride, className )
+			: {};
 
 	// Duotone
 	const hasDuotoneEnabled = useHasDuotoneControl( settings );
@@ -236,7 +241,12 @@ export default function FiltersPanel( {
 			panelId={ panelId }
 		>
 			{ hasDuotoneEnabled && (
-				<ToolsPanelItem
+				<InheritanceToolsPanelItem
+					{ ...inheritanceProps(
+						isDuotonePlaceholder,
+						localDuotone !== undefined &&
+							inheritedDuotone !== undefined
+					) }
 					label={ __( 'Duotone' ) }
 					hasValue={ hasDuotone }
 					onDeselect={ resetDuotone }
@@ -245,13 +255,7 @@ export default function FiltersPanel( {
 				>
 					<Dropdown
 						popoverProps={ popoverProps }
-						className={ clsx(
-							'block-editor-global-styles-filters-panel__dropdown',
-							{
-								'is-inherited-placeholder':
-									isDuotonePlaceholder,
-							}
-						) }
+						className="block-editor-global-styles-filters-panel__dropdown"
 						renderToggle={ renderToggle( duotone, resetDuotone ) }
 						renderContent={ () => (
 							<DropdownContentWrapper paddingSize="small">
@@ -276,7 +280,7 @@ export default function FiltersPanel( {
 							</DropdownContentWrapper>
 						) }
 					/>
-				</ToolsPanelItem>
+				</InheritanceToolsPanelItem>
 			) }
 		</Wrapper>
 	);

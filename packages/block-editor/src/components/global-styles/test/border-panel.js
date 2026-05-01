@@ -10,8 +10,16 @@ import userEvent from '@testing-library/user-event';
 import BorderPanel from '../border-panel';
 
 /**
- * Tests the per-control placeholder pattern in `BorderPanel` for border
- * radius, border, and shadow controls.
+ * Tests for the inherited Global Styles label treatment in `BorderPanel`.
+ * The visual treatment lands on the parent `ToolsPanelItem` via the
+ * `.is-inherited-from-global-styles` / `.has-local-override-from-global-styles`
+ * class hooks. The inner controls (`BorderBoxControl`,
+ * `BorderRadiusControl`, `ShadowPopover`) carry no special className
+ * for inheritance state.
+ *
+ * For the input archetype (`BorderRadiusControl`) the inherited value
+ * is forwarded as a `placeholder=` so an empty input still renders the
+ * inherited number(s) at-rest.
  */
 
 const settingsAll = {
@@ -40,7 +48,7 @@ const settingsAll = {
 	},
 };
 
-describe( 'BorderPanel — per-control placeholder pattern', () => {
+describe( 'BorderPanel — inherited Global Styles label treatment', () => {
 	describe( 'Border radius (input archetype)', () => {
 		it( 'renders an inherited string radius as placeholder when local is empty', () => {
 			const inheritedValue = { border: { radius: '8px' } };
@@ -62,7 +70,7 @@ describe( 'BorderPanel — per-control placeholder pattern', () => {
 			expect( radiusInput ).toHaveAttribute( 'placeholder', '8px' );
 			expect(
 				// eslint-disable-next-line testing-library/no-node-access
-				radiusInput.closest( '.is-inherited-placeholder' )
+				radiusInput.closest( '.is-inherited-from-global-styles' )
 			).not.toBeNull();
 		} );
 
@@ -87,8 +95,12 @@ describe( 'BorderPanel — per-control placeholder pattern', () => {
 			expect( radiusInput ).not.toHaveAttribute( 'placeholder' );
 			expect(
 				// eslint-disable-next-line testing-library/no-node-access
-				radiusInput.closest( '.is-inherited-placeholder' )
+				radiusInput.closest( '.is-inherited-from-global-styles' )
 			).toBeNull();
+			expect(
+				// eslint-disable-next-line testing-library/no-node-access
+				radiusInput.closest( '.has-local-override-from-global-styles' )
+			).not.toBeNull();
 		} );
 
 		it( 'does not invoke onChange on mount when only an inherited radius is present (display-without-commit)', () => {
@@ -108,7 +120,7 @@ describe( 'BorderPanel — per-control placeholder pattern', () => {
 			expect( onChange ).not.toHaveBeenCalled();
 		} );
 
-		it( 'commits a typed local radius override without copying any inherited values', async () => {
+		it( 'commits a typed local radius override without copying any inherited values (strip-not-copy)', async () => {
 			const user = userEvent.setup();
 			const onChange = jest.fn();
 			const inheritedValue = {
@@ -139,7 +151,7 @@ describe( 'BorderPanel — per-control placeholder pattern', () => {
 	} );
 
 	describe( 'Border box (compound archetype)', () => {
-		it( 'applies the at-rest className to BorderBoxControl when local is unset and inherited is defined', () => {
+		it( 'applies the inherited-label className when local is unset and inherited is defined', () => {
 			const inheritedValue = {
 				border: {
 					color: '#000000',
@@ -158,18 +170,16 @@ describe( 'BorderPanel — per-control placeholder pattern', () => {
 				/>
 			);
 
-			// The class lands on the outer BorderBoxControl wrapper,
-			// which wraps the `Border` ToolsPanelItem content.
+			// The inherited-label class lands on the parent
+			// ToolsPanelItem of the Border control.
 			// eslint-disable-next-line testing-library/no-container, testing-library/no-node-access
-			const placeholderRoots = container.querySelectorAll(
-				'.is-inherited-placeholder'
+			const inheritedItems = container.querySelectorAll(
+				'.is-inherited-from-global-styles'
 			);
-			// One for BorderBoxControl, none for BorderRadius (no
-			// inherited radius in this test), none for ShadowPopover.
-			expect( placeholderRoots.length ).toBeGreaterThanOrEqual( 1 );
+			expect( inheritedItems.length ).toBeGreaterThanOrEqual( 1 );
 		} );
 
-		it( 'does not apply the at-rest className when a local border is defined', () => {
+		it( 'applies the local-override className when a local border is defined', () => {
 			const inheritedValue = {
 				border: {
 					color: '#000000',
@@ -197,12 +207,103 @@ describe( 'BorderPanel — per-control placeholder pattern', () => {
 				/>
 			);
 
-			// No is-inherited-placeholder anywhere in the panel.
+			// Inherited class never lands when local is set.
 			// eslint-disable-next-line testing-library/no-container, testing-library/no-node-access
-			const placeholderRoots = container.querySelectorAll(
-				'.is-inherited-placeholder'
+			const inheritedItems = container.querySelectorAll(
+				'.is-inherited-from-global-styles'
 			);
-			expect( placeholderRoots ).toHaveLength( 0 );
+			expect( inheritedItems ).toHaveLength( 0 );
+
+			// And the local-override class is present at least once.
+			// eslint-disable-next-line testing-library/no-container, testing-library/no-node-access
+			const overrideItems = container.querySelectorAll(
+				'.has-local-override-from-global-styles'
+			);
+			expect( overrideItems.length ).toBeGreaterThanOrEqual( 1 );
+		} );
+
+		it( 'renders a label DOM node the inheritance treatment can target (regression)', () => {
+			// Regression: `BorderBoxControl`'s built-in label is a styled
+			// component with no `.components-base-control__label`
+			// classname, so when the panel passed its visible "Border"
+			// label via that prop neither the synced-purple text rule
+			// nor the portaled local-override dot could find a target.
+			// The panel must render its own `BaseControl.VisualLabel`
+			// inside the `ToolsPanelItem` so both visual treatments
+			// land on the Border control as designed.
+			const inheritedValue = {
+				border: {
+					color: '#000000',
+					style: 'solid',
+					width: '1px',
+				},
+			};
+
+			const { container } = render(
+				<BorderPanel
+					value={ {} }
+					inheritedValue={ inheritedValue }
+					settings={ settingsAll }
+					onChange={ () => {} }
+					panelId="test-panel"
+				/>
+			);
+
+			// eslint-disable-next-line testing-library/no-container, testing-library/no-node-access
+			const inheritedItem = container.querySelector(
+				'.is-inherited-from-global-styles'
+			);
+			expect( inheritedItem ).not.toBeNull();
+			expect(
+				// eslint-disable-next-line testing-library/no-node-access
+				inheritedItem.querySelector( '.components-base-control__label' )
+			).not.toBeNull();
+		} );
+
+		it( 'does not bake the inherited radius into the local override when only color/style/width are customised (regression)', async () => {
+			// Regression: when at-rest the panel displays the inherited
+			// border in `BorderBoxControl`, including the inherited
+			// `radius`. Customising color/style/width must not copy
+			// the inherited radius into `value.border.radius` —
+			// otherwise the radius `ToolsPanelItem` flips into the
+			// `has-local-override-from-global-styles` state (and
+			// renders the blue dot) even though the user never
+			// customised the radius.
+			const user = userEvent.setup();
+			const onChange = jest.fn();
+			const inheritedValue = {
+				border: {
+					color: '#000000',
+					style: 'solid',
+					width: '1px',
+					radius: '8px',
+				},
+			};
+
+			render(
+				<BorderPanel
+					value={ {} }
+					inheritedValue={ inheritedValue }
+					settings={ settingsAll }
+					onChange={ onChange }
+					panelId="test-panel"
+				/>
+			);
+
+			// Trigger a border change via the width input rendered by
+			// `BorderBoxControl`. We don't depend on the exact role
+			// markup beyond there being a numeric width input — the
+			// regression is observable in the resulting `onChange`
+			// payload, not the DOM.
+			const widthInput = screen.getByRole( 'spinbutton', {
+				name: /border width/i,
+			} );
+			await user.clear( widthInput );
+			await user.type( widthInput, '4' );
+
+			expect( onChange ).toHaveBeenCalled();
+			const lastCall = onChange.mock.calls.at( -1 )[ 0 ];
+			expect( lastCall?.border?.radius ).toBeUndefined();
 		} );
 
 		it( 'does not invoke onChange on mount when only an inherited border is present', () => {
@@ -230,7 +331,7 @@ describe( 'BorderPanel — per-control placeholder pattern', () => {
 	} );
 
 	describe( 'Shadow (popover-trigger archetype)', () => {
-		it( 'applies the at-rest className to the shadow Dropdown wrapper when local is unset and inherited is defined', () => {
+		it( 'applies the inherited-label className to the shadow ToolsPanelItem when local is unset and inherited is defined', () => {
 			const inheritedValue = {
 				shadow: 'var:preset|shadow|soft',
 			};
@@ -250,10 +351,15 @@ describe( 'BorderPanel — per-control placeholder pattern', () => {
 				'.block-editor-global-styles__shadow-dropdown'
 			);
 			expect( dropdown ).not.toBeNull();
-			expect( dropdown ).toHaveClass( 'is-inherited-placeholder' );
+			// The dropdown itself no longer carries the inheritance
+			// class — it sits inside a ToolsPanelItem that does.
+			expect(
+				// eslint-disable-next-line testing-library/no-node-access
+				dropdown.closest( '.is-inherited-from-global-styles' )
+			).not.toBeNull();
 		} );
 
-		it( 'does not apply the at-rest className when a local shadow is set', () => {
+		it( 'applies the local-override className when a local shadow is set', () => {
 			const inheritedValue = {
 				shadow: 'var:preset|shadow|soft',
 			};
@@ -274,7 +380,14 @@ describe( 'BorderPanel — per-control placeholder pattern', () => {
 				'.block-editor-global-styles__shadow-dropdown'
 			);
 			expect( dropdown ).not.toBeNull();
-			expect( dropdown ).not.toHaveClass( 'is-inherited-placeholder' );
+			expect(
+				// eslint-disable-next-line testing-library/no-node-access
+				dropdown.closest( '.is-inherited-from-global-styles' )
+			).toBeNull();
+			expect(
+				// eslint-disable-next-line testing-library/no-node-access
+				dropdown.closest( '.has-local-override-from-global-styles' )
+			).not.toBeNull();
 		} );
 
 		it( 'does not invoke onChange on mount when only an inherited shadow is present', () => {

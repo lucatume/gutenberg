@@ -349,6 +349,7 @@ function ScreenBlock( { name, variation }: ScreenBlockProps ) {
 					value={ style }
 					onChange={ setStyle }
 					settings={ settings }
+					showInheritanceLabelIndicators={ false }
 				/>
 			) }
 			{ hasBackgroundPanel && (
@@ -358,6 +359,7 @@ function ScreenBlock( { name, variation }: ScreenBlockProps ) {
 					onChange={ setStyle }
 					settings={ settings }
 					defaultValues={ BACKGROUND_BLOCK_DEFAULT_VALUES }
+					showInheritanceLabelIndicators={ false }
 				/>
 			) }
 			{ hasTypographyPanel && (
@@ -367,6 +369,7 @@ function ScreenBlock( { name, variation }: ScreenBlockProps ) {
 					onChange={ onChangeTypography }
 					settings={ settings }
 					isGlobalStyles
+					showInheritanceLabelIndicators={ false }
 				/>
 			) }
 			{ hasDimensionsPanel && (
@@ -376,6 +379,7 @@ function ScreenBlock( { name, variation }: ScreenBlockProps ) {
 					onChange={ onChangeDimensions }
 					settings={ settings }
 					includeLayoutControls
+					showInheritanceLabelIndicators={ false }
 				/>
 			) }
 			{ hasBorderPanel && (
@@ -384,6 +388,7 @@ function ScreenBlock( { name, variation }: ScreenBlockProps ) {
 					value={ style }
 					onChange={ onChangeBorders }
 					settings={ settings }
+					showInheritanceLabelIndicators={ false }
 				/>
 			) }
 			{ hasFiltersPanel && (
@@ -393,6 +398,7 @@ function ScreenBlock( { name, variation }: ScreenBlockProps ) {
 					onChange={ setStyle }
 					settings={ settings }
 					includeLayoutControls
+					showInheritanceLabelIndicators={ false }
 				/>
 			) }
 			{ hasImageSettingsPanel && (
