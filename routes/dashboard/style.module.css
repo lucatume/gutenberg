@@ -1,11 +1,18 @@
 .widgets {
-	height: 100%;
+	display: grid;
+	grid-template-columns: repeat(4, 1fr);
+	gap: var(--wpds-dimension-padding-lg);
+	align-items: start;
+	margin: var(--wpds-dimension-padding-lg);
 }
 
 .widget {
-	max-width: 50%;
-	margin: 16px;
+	grid-column: span 2;
 	box-shadow: 0 0 10px 0 rgba(0, 0, 0, 0.02);
+}
+
+.widget-full-width {
+	grid-column: span 4;
 }
 
 .is-loading {

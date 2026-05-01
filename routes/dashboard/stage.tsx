@@ -69,16 +69,19 @@ const EventsNewsWidget = lazy( () => {
 
 const Widget = ( {
 	children,
+	className: classNameProp,
 	isLoading,
 	title,
 }: {
 	children?: React.ReactNode;
+	className?: string;
 	isLoading?: boolean;
 	title?: string;
 } ) => {
 	const className = clsx(
 		styles.widget,
-		isLoading && styles[ 'is-loading' ]
+		isLoading && styles[ 'is-loading' ],
+		classNameProp
 	);
 
 	return (
@@ -89,9 +92,15 @@ const Widget = ( {
 	);
 };
 
-const LoadingPlaceholder = ( { title }: { title?: string } ) => {
+const LoadingPlaceholder = ( {
+	className,
+	title,
+}: {
+	className?: string;
+	title?: string;
+} ) => {
 	return (
-		<Widget title={ title } isLoading>
+		<Widget className={ className } title={ title } isLoading>
 			{ __( 'Loading widget…' ) }
 		</Widget>
 	);
@@ -103,10 +112,13 @@ function Dashboard() {
 			<div className={ styles.widgets }>
 				<Suspense
 					fallback={
-						<LoadingPlaceholder title={ __( 'Welcome' ) } />
+						<LoadingPlaceholder
+							className={ styles[ 'widget-full-width' ] }
+							title={ __( 'Welcome' ) }
+						/>
 					}
 				>
-					<Widget>
+					<Widget className={ styles[ 'widget-full-width' ] }>
 						<WelcomeWidget />
 					</Widget>
 				</Suspense>
