@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+### New Features
+
+-   When the active theme has a `root.html` template, the templates list now opens any non-root template in focus mode (matching how `core/template-part` is edited) and surfaces a quick "Root template" link in the templates sidebar.
+
 ## 6.45.0 (2026-04-29)
 
 ## 6.44.0 (2026-04-15)

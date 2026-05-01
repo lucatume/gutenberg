@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+### New Features
+
+-   New `core/template-content` block — renders, on the frontend, whichever template the WordPress hierarchy selects, and is intended for use inside an opt-in `root.html` template that wraps every page. In the editor it previews the active theme's home-hierarchy fallback (front-page → home → index) inside the root chrome and exposes an "Edit original" toolbar button to navigate to the previewed template's focused canvas.
+
 ## 9.45.0 (2026-04-29)
 
 ## 9.44.0 (2026-04-15)

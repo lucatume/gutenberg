@@ -131,21 +131,55 @@ class Root_Template_Test extends WP_UnitTestCase {
 	}
 
 	/**
-	 * The render callback's static `$seen_ids` recursion guard should bail
-	 * with empty output when the same template id is encountered twice
-	 * (e.g. an inner template containing a Template Content block).
-	 *
-	 * We simulate the second-pass behaviour by setting the stashed id to a
-	 * known nonexistent id; on the first call `get_block_template` returns
-	 * null and the function exits before tracking. To assert the guard
-	 * itself, we call the function in a way that primes the static.
+	 * The render callback returns empty when the stashed inner template id
+	 * doesn't resolve to a real template (e.g. theme uninstalled, slug
+	 * misspelled in `root.html`).
 	 */
-	public function test_render_callback_recursion_guard() {
+	public function test_render_callback_returns_empty_for_missing_template() {
 		$GLOBALS['_wp_current_inner_template_id'] = 'nonexistent-theme//does-not-exist';
 
-		// `get_block_template` returns null for the missing id, so the
-		// callback should bail without ever touching the recursion static.
 		$rendered = gutenberg_render_block_core_template_content();
 		$this->assertSame( '', $rendered );
+	}
+
+	/**
+	 * The render callback's static `$seen_ids` recursion guard bails with
+	 * empty output when the same template id is encountered while it's
+	 * already being rendered. This exercises the actual reentry path —
+	 * a template whose content contains a `<!-- wp:template-content /-->`
+	 * block — by creating such a template via WP's REST controller and
+	 * stashing its id.
+	 */
+	public function test_render_callback_recursion_guard_blocks_reentry() {
+		$theme         = get_stylesheet();
+		$inner_id      = $theme . '//recursive-fixture';
+		$recursive_tpl = wp_insert_post(
+			array(
+				'post_type'    => 'wp_template',
+				'post_status'  => 'publish',
+				'post_name'    => 'recursive-fixture',
+				'post_title'   => 'Recursive fixture',
+				'post_content' => '<!-- wp:paragraph --><p>before</p><!-- /wp:paragraph --><!-- wp:template-content /--><!-- wp:paragraph --><p>after</p><!-- /wp:paragraph -->',
+				'tax_input'    => array( 'wp_theme' => $theme ),
+			)
+		);
+		wp_set_object_terms( $recursive_tpl, $theme, 'wp_theme' );
+
+		$GLOBALS['_wp_current_inner_template_id'] = $inner_id;
+
+		// First pass renders the outer template. The inner Template Content
+		// block resolves the same id, hits the static `$seen_ids` guard, and
+		// returns an empty string for the inner pass. We assert "before" and
+		// "after" both rendered — i.e. the outer pass completed normally —
+		// and that no recursion-induced repetition appears in the output.
+		$rendered = gutenberg_render_block_core_template_content();
+
+		wp_delete_post( $recursive_tpl, true );
+
+		$this->assertStringContainsString( 'before', $rendered );
+		$this->assertStringContainsString( 'after', $rendered );
+		// Two paragraph occurrences — one each from "before" and "after" —
+		// confirm the inner re-entry produced nothing.
+		$this->assertSame( 2, substr_count( $rendered, '<p>' ) );
 	}
 }
