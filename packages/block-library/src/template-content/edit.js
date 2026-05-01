@@ -29,34 +29,64 @@ import {
 import icon from './icon';
 
 /**
- * The hierarchy used to find a default preview template when the user hasn't
- * picked one explicitly. Walks the same precedence WordPress uses to resolve
- * the home page on the frontend, falling through to the universal `index`
- * fallback if neither front-page nor home exists.
+ * Hierarchy used to find a default preview template when the user is editing
+ * `root.html` directly and hasn't picked one explicitly. Walks the same
+ * precedence WordPress uses to resolve the home page on the frontend.
  */
 const HOMEPAGE_FALLBACKS = [ 'front-page', 'home', 'index' ];
 
 /**
- * Mirrors the page-editor's `DisableNonPageContentBlocks` pattern:
- * the previewed inner template's blocks should appear in the canvas (and List
- * View) but stay non-structural. To actually edit them, the author uses the
- * "Edit original" toolbar button to navigate to the inner template's own
- * focused canvas — same way `core/template-part` is edited.
+ * Locks the canvas down to "edit only the inner template's blocks" when the
+ * Site Editor is wrapping a non-root template inside `root.html`. Mirrors the
+ * page-editor's `DisableNonPageContentBlocks` pattern:
+ *
+ *   - Disable the entire canvas (`''` clientId).
+ *   - Promote `core/template-content` itself to `'contentOnly'` so it stays
+ *     visible in List View (the only non-`disabled` mode that does).
+ *   - Re-enable each direct child of `core/template-content` so the inner
+ *     template's blocks can be edited normally.
+ *
+ * `useLayoutEffect` (vs. `useEffect`) so the dispatches fire synchronously
+ * after commit but before browser paint — closes the brief one-frame window
+ * where the user could otherwise click root chrome and have edits silently
+ * route to the wrong entity.
  */
-function useLockInnerBlocks( clientId ) {
+function useWrapModeLocking( clientId, childClientIds ) {
 	const registry = useRegistry();
-	const childClientIds = useSelect(
-		( select ) =>
-			clientId
-				? select( blockEditorStore ).getBlockOrder( clientId )
-				: [],
-		[ clientId ]
-	);
+	useLayoutEffect( () => {
+		const { setBlockEditingMode, unsetBlockEditingMode } =
+			registry.dispatch( blockEditorStore );
+		registry.batch( () => {
+			setBlockEditingMode( '', 'disabled' );
+			if ( clientId ) {
+				setBlockEditingMode( clientId, 'contentOnly' );
+			}
+			for ( const id of childClientIds ) {
+				setBlockEditingMode( id, 'default' );
+			}
+		} );
+		return () => {
+			registry.batch( () => {
+				unsetBlockEditingMode( '' );
+				if ( clientId ) {
+					unsetBlockEditingMode( clientId );
+				}
+				for ( const id of childClientIds ) {
+					unsetBlockEditingMode( id );
+				}
+			} );
+		};
+	}, [ clientId, childClientIds, registry ] );
+}
 
-	// `useLayoutEffect` (vs. `useEffect`) so the editing-mode dispatch fires
-	// synchronously after commit but before browser paint — closes the brief
-	// window where children would otherwise render in `default` mode and
-	// briefly accept clicks that go nowhere via our no-op `onChange`.
+/**
+ * Sets each direct child of `core/template-content` to `'contentOnly'` when
+ * the user is editing `root.html` directly. The previewed inner template
+ * appears in canvas and List View but stays non-structural; to actually
+ * edit it, the author uses "Edit original" in the toolbar.
+ */
+function usePreviewModeLocking( childClientIds ) {
+	const registry = useRegistry();
 	useLayoutEffect( () => {
 		if ( childClientIds.length === 0 ) {
 			return;
@@ -78,14 +108,92 @@ function useLockInnerBlocks( clientId ) {
 	}, [ childClientIds, registry ] );
 }
 
-export default function TemplateContentEdit( { clientId } ) {
-	const blockProps = useBlockProps();
+/**
+ * Wrap-mode rendering: the user navigated to a non-root template (e.g.
+ * `archive`) but the Site Editor is wrapping it in `root.html`. The inner
+ * template's blocks render here as fully editable inner blocks; their edits
+ * round-trip to the inner template's entity. Root chrome around us is
+ * locked via `useWrapModeLocking`.
+ */
+function WrapModeEdit( { innerTemplateId, blockProps, clientId } ) {
+	const [ blocks, onInput, onChange ] = useEntityBlockEditor(
+		'postType',
+		'wp_template',
+		{ id: innerTemplateId }
+	);
 
+	const innerBlocksProps = useInnerBlocksProps( blockProps, {
+		value: blocks,
+		onInput,
+		onChange,
+		templateLock: false,
+	} );
+
+	const childClientIds = useSelect(
+		( select ) =>
+			clientId
+				? select( blockEditorStore ).getBlockOrder( clientId )
+				: [],
+		[ clientId ]
+	);
+	useWrapModeLocking( clientId, childClientIds );
+
+	const onNavigateToEntityRecord = useSelect(
+		( select ) =>
+			select( blockEditorStore ).getSettings().onNavigateToEntityRecord,
+		[]
+	);
+
+	const editOriginalToolbar = onNavigateToEntityRecord && (
+		<BlockControls group="other">
+			<ToolbarButton
+				onClick={ () =>
+					onNavigateToEntityRecord( {
+						postId: innerTemplateId,
+						postType: 'wp_template',
+					} )
+				}
+			>
+				{ __( 'Edit original' ) }
+			</ToolbarButton>
+		</BlockControls>
+	);
+
+	if ( ! blocks ) {
+		return (
+			<>
+				{ editOriginalToolbar }
+				<div { ...blockProps }>
+					<Placeholder
+						icon={ icon }
+						label={ __( 'Template Content' ) }
+						instructions={ __( 'Loading template…' ) }
+					>
+						<Spinner />
+					</Placeholder>
+				</div>
+			</>
+		);
+	}
+
+	return (
+		<>
+			{ editOriginalToolbar }
+			<div { ...innerBlocksProps } />
+		</>
+	);
+}
+
+/**
+ * Direct-edit-root rendering: the user is editing `root.html`. Show a
+ * non-editable preview of the active theme's home-hierarchy fallback (or a
+ * user-picked template) inside this slot, with an "Edit original" button to
+ * navigate to focus mode for the previewed template.
+ */
+function PreviewModeEdit( { blockProps, clientId } ) {
 	// Per-session local state — the previewed template is an editor-only
 	// convenience, not data the theme author wants persisted into the saved
-	// root template's HTML. Each editor instance starts at the home-page
-	// hierarchy fallback and remembers what the user picked until they
-	// reload or navigate away.
+	// root template's HTML.
 	const [ previewedTemplate, setPreviewedTemplate ] = useState( undefined );
 
 	const { stylesheet, themeTemplates } = useSelect( ( select ) => {
@@ -103,11 +211,8 @@ export default function TemplateContentEdit( { clientId } ) {
 		};
 	}, [] );
 
-	// Resolve the template id to render as the preview:
-	//   1. The user's session-local pick, if any.
-	//   2. Else the first of `front-page` / `home` / `index` that exists.
-	// Frontend rendering is unaffected; the swap there always follows the
-	// real WordPress hierarchy regardless of this preview.
+	// 1. The user's session-local pick, if any.
+	// 2. Else the first of `front-page` / `home` / `index` that exists.
 	const templateId = useMemo( () => {
 		if ( ! stylesheet ) {
 			return null;
@@ -127,9 +232,6 @@ export default function TemplateContentEdit( { clientId } ) {
 		return null;
 	}, [ stylesheet, previewedTemplate, themeTemplates ] );
 
-	// Whether the user can edit the previewed template. Mirrors
-	// `core/template-part`'s gate on the "Edit original" toolbar button so
-	// users without permission don't see an action they can't perform.
 	const canEditPreviewedTemplate = useSelect(
 		( select ) =>
 			!! templateId &&
@@ -158,10 +260,15 @@ export default function TemplateContentEdit( { clientId } ) {
 		renderAppender: false,
 	} );
 
-	useLockInnerBlocks( clientId );
+	const childClientIds = useSelect(
+		( select ) =>
+			clientId
+				? select( blockEditorStore ).getBlockOrder( clientId )
+				: [],
+		[ clientId ]
+	);
+	usePreviewModeLocking( childClientIds );
 
-	// Build the dropdown options. Exclude `root` itself — previewing the
-	// root template inside its own preview slot would just recurse visually.
 	const previewOptions = useMemo( () => {
 		const fallbackOption = {
 			label: __( 'Default (home page)' ),
@@ -250,4 +357,31 @@ export default function TemplateContentEdit( { clientId } ) {
 			</div>
 		</>
 	);
+}
+
+export default function TemplateContentEdit( { clientId } ) {
+	const blockProps = useBlockProps();
+
+	// `__experimentalRootInnerTemplateId` is set by edit-site when wrapping
+	// a non-root template inside `root.html`. When set, this block's
+	// children are the inner template's blocks; when not, we're being
+	// rendered inside `root.html` itself and show a non-editable preview.
+	const innerTemplateId = useSelect( ( select ) => {
+		return (
+			select( blockEditorStore ).getSettings()
+				.__experimentalRootInnerTemplateId ?? null
+		);
+	}, [] );
+
+	if ( innerTemplateId ) {
+		return (
+			<WrapModeEdit
+				innerTemplateId={ innerTemplateId }
+				blockProps={ blockProps }
+				clientId={ clientId }
+			/>
+		);
+	}
+
+	return <PreviewModeEdit blockProps={ blockProps } clientId={ clientId } />;
 }
