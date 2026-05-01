@@ -37,9 +37,9 @@ class Root_Template_Test extends WP_UnitTestCase {
 		$this->original_stylesheet = get_stylesheet();
 		$this->original_template   = get_template();
 		$this->original_globals    = array(
-			'_wp_current_template_id'        => $GLOBALS['_wp_current_template_id'] ?? null,
-			'_wp_current_template_content'   => $GLOBALS['_wp_current_template_content'] ?? null,
-			'_wp_current_inner_template_id'  => $GLOBALS['_wp_current_inner_template_id'] ?? null,
+			'_wp_current_template_id'       => $GLOBALS['_wp_current_template_id'] ?? null,
+			'_wp_current_template_content'  => $GLOBALS['_wp_current_template_content'] ?? null,
+			'_wp_current_inner_template_id' => $GLOBALS['_wp_current_inner_template_id'] ?? null,
 		);
 		// Reset the static cache between tests so each test sees the current
 		// theme's root template.
@@ -49,7 +49,7 @@ class Root_Template_Test extends WP_UnitTestCase {
 	public function tear_down() {
 		// Restore globals.
 		foreach ( $this->original_globals as $key => $value ) {
-			if ( $value === null ) {
+			if ( null === $value ) {
 				unset( $GLOBALS[ $key ] );
 			} else {
 				$GLOBALS[ $key ] = $value;
