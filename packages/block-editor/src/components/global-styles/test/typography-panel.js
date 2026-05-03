@@ -952,4 +952,47 @@ describe( 'TypographyPanel — inheritedValue round-trip', () => {
 			).toHaveLength( 0 );
 		} );
 	} );
+
+	it( 'treats local zero values as local overrides instead of inherited placeholders', () => {
+		const inheritedValue = {
+			typography: { lineHeight: '2', textColumns: 3 },
+		};
+		const value = {
+			typography: { lineHeight: 0, textColumns: 0 },
+		};
+
+		render(
+			<TypographyPanel
+				value={ value }
+				inheritedValue={ inheritedValue }
+				settings={ baseSettings }
+				onChange={ () => {} }
+				panelId="test-panel"
+			/>
+		);
+
+		const lineHeightInput = screen.getByLabelText( /line height/i );
+		expect( lineHeightInput ).toHaveValue( 0 );
+		expect( lineHeightInput ).not.toHaveAttribute( 'placeholder' );
+		expect(
+			// eslint-disable-next-line testing-library/no-node-access
+			lineHeightInput.closest( '.is-inherited-from-global-styles' )
+		).toBeNull();
+		expect(
+			// eslint-disable-next-line testing-library/no-node-access
+			lineHeightInput.closest( '.has-local-override-from-global-styles' )
+		).not.toBeNull();
+
+		const columnsInput = screen.getByLabelText( /columns/i );
+		expect( columnsInput ).toHaveValue( 0 );
+		expect( columnsInput ).not.toHaveAttribute( 'placeholder' );
+		expect(
+			// eslint-disable-next-line testing-library/no-node-access
+			columnsInput.closest( '.is-inherited-from-global-styles' )
+		).toBeNull();
+		expect(
+			// eslint-disable-next-line testing-library/no-node-access
+			columnsInput.closest( '.has-local-override-from-global-styles' )
+		).not.toBeNull();
+	} );
 } );

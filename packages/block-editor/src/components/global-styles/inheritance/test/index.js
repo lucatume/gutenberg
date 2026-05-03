@@ -4,8 +4,11 @@
 import { getInheritanceProps } from '../';
 
 describe( 'getInheritanceProps', () => {
-	test( 'returns an empty object when neither flag is set', () => {
-		expect( getInheritanceProps( false, false ) ).toEqual( {} );
+	test( 'returns explicit false state when neither flag is set', () => {
+		expect( getInheritanceProps( false, false ) ).toEqual( {
+			isInherited: false,
+			hasLocalOverride: false,
+		} );
 	} );
 
 	test( 'returns ONLY the inherited className when isInherited is set', () => {
@@ -17,12 +20,16 @@ describe( 'getInheritanceProps', () => {
 		// wrapper.
 		expect( getInheritanceProps( true, false ) ).toEqual( {
 			className: 'is-inherited-from-global-styles',
+			isInherited: true,
+			hasLocalOverride: false,
 		} );
 	} );
 
 	test( 'returns the local-override className when hasLocalOverride is set', () => {
 		expect( getInheritanceProps( false, true ) ).toEqual( {
 			className: 'has-local-override-from-global-styles',
+			isInherited: false,
+			hasLocalOverride: true,
 		} );
 	} );
 
@@ -30,39 +37,55 @@ describe( 'getInheritanceProps', () => {
 		// A buggy caller could pass both as `true`. The visual
 		// contract is mutual exclusion — local-override always wins.
 		const result = getInheritanceProps( true, true );
-		expect( result.className ).not.toContain(
-			'is-inherited-from-global-styles'
-		);
 		expect( result.className ).toContain(
 			'has-local-override-from-global-styles'
 		);
+		expect( result.isInherited ).toBe( false );
+		expect( result.hasLocalOverride ).toBe( true );
 	} );
 
 	test( 'coerces truthy/falsy non-boolean inputs', () => {
 		// Common pattern: callers pass an undefined or null inherited
 		// value that we want to treat as "no local override" rather
 		// than letting it slip through as truthy.
-		expect( getInheritanceProps( undefined, undefined ) ).toEqual( {} );
-		expect( getInheritanceProps( null, null ) ).toEqual( {} );
-		expect( getInheritanceProps( '', '' ) ).toEqual( {} );
+		expect( getInheritanceProps( undefined, undefined ) ).toEqual( {
+			isInherited: false,
+			hasLocalOverride: false,
+		} );
+		expect( getInheritanceProps( null, null ) ).toEqual( {
+			isInherited: false,
+			hasLocalOverride: false,
+		} );
+		expect( getInheritanceProps( '', '' ) ).toEqual( {
+			isInherited: false,
+			hasLocalOverride: false,
+		} );
 		// Truthy non-boolean
 		expect( getInheritanceProps( 'inherited', 0 ) ).toEqual( {
 			className: 'is-inherited-from-global-styles',
+			isInherited: true,
+			hasLocalOverride: false,
 		} );
 		expect( getInheritanceProps( 0, 'local' ) ).toEqual( {
 			className: 'has-local-override-from-global-styles',
+			isInherited: false,
+			hasLocalOverride: true,
 		} );
 	} );
 
 	test( 'merges a base className with the inherited class hook', () => {
 		expect( getInheritanceProps( true, false, 'single-column' ) ).toEqual( {
 			className: 'single-column is-inherited-from-global-styles',
+			isInherited: true,
+			hasLocalOverride: false,
 		} );
 	} );
 
 	test( 'merges a base className with the local-override class hook', () => {
 		expect( getInheritanceProps( false, true, 'single-column' ) ).toEqual( {
 			className: 'single-column has-local-override-from-global-styles',
+			isInherited: false,
+			hasLocalOverride: true,
 		} );
 	} );
 
@@ -70,6 +93,8 @@ describe( 'getInheritanceProps', () => {
 		expect( getInheritanceProps( false, false, 'single-column' ) ).toEqual(
 			{
 				className: 'single-column',
+				isInherited: false,
+				hasLocalOverride: false,
 			}
 		);
 	} );

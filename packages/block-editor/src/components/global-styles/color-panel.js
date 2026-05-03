@@ -233,7 +233,11 @@ export function ColorPanelDropdown( {
 	hasInheritedValue = false,
 	showInheritanceLabelIndicators = true,
 } ) {
-	const currentTab = tabs.find( ( tab ) => tab.userValue !== undefined );
+	const currentTab =
+		tabs.find( ( tab ) => tab.userValue !== undefined ) ??
+		tabs.find(
+			( tab ) => tab.isPlaceholder || tab.inheritedValue !== undefined
+		);
 	const { key: firstTabKey, ...firstTab } = tabs[ 0 ] ?? {};
 	const colorGradientDropdownButtonRef = useRef( undefined );
 	const inheritanceProps = ( isInherited, hasLocalOverride, classes ) =>

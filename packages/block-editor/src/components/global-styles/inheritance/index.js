@@ -53,7 +53,7 @@ import { __ } from '@wordpress/i18n';
  * @param {string|Array|Object} [baseClassName]  Optional className(s) to fold
  *                                               into the returned `className`.
  *
- * @return {{ className?: string }} Props for the wrapping
+ * @return {{ className?: string, isInherited: boolean, hasLocalOverride: boolean }} Props for the wrapping
  *                                  `InheritanceToolsPanelItem`.
  */
 export function getInheritanceProps(
@@ -66,7 +66,11 @@ export function getInheritanceProps(
 		'is-inherited-from-global-styles': inheritedOnly,
 		'has-local-override-from-global-styles': !! hasLocalOverride,
 	} );
-	return className ? { className } : {};
+	return {
+		...( className ? { className } : {} ),
+		isInherited: inheritedOnly,
+		hasLocalOverride: !! hasLocalOverride,
+	};
 }
 
 /**
@@ -212,8 +216,8 @@ function PortaledInheritanceDot( { onResetToInherited } ) {
  *
  * Panels swap `<ToolsPanelItem>` for `<InheritanceToolsPanelItem>` and
  * keep the existing `{ ...getInheritanceProps( a, b ) }` spread. The
- * wrapper detects the inheritance state by inspecting the spread
- * `className` so the call site does not need to repeat the booleans.
+ * wrapper reads the explicit inheritance booleans from that spread so
+ * class names remain presentational rather than stateful.
  *
  * The reset action wired into the override menu calls `onDeselect`,
  * which is the same callback `ToolsPanel` uses for its native
@@ -222,27 +226,24 @@ function PortaledInheritanceDot( { onResetToInherited } ) {
  * `setAttributes` undo step.
  *
  * @param {Object}   props
- * @param {string}   [props.className] ClassName forwarded to ToolsPanelItem.
- * @param {string}   props.label       Visible label.
- * @param {Function} props.onDeselect  Reset handler.
- * @param {Element}  props.children    Inner control.
+ * @param {string}   [props.className]        ClassName forwarded to ToolsPanelItem.
+ * @param {boolean}  [props.isInherited]      Whether the control inherits at rest.
+ * @param {boolean}  [props.hasLocalOverride] Whether the control overrides an inherited value.
+ * @param {string}   props.label              Visible label.
+ * @param {Function} props.onDeselect         Reset handler.
+ * @param {Element}  props.children           Inner control.
  *
  * @return {Element} The wrapped ToolsPanelItem.
  */
 export function InheritanceToolsPanelItem( {
 	className,
+	isInherited,
+	hasLocalOverride,
 	label,
 	onDeselect,
 	children,
 	...rest
 } ) {
-	const isInherited = !! className?.includes(
-		'is-inherited-from-global-styles'
-	);
-	const hasLocalOverride = !! className?.includes(
-		'has-local-override-from-global-styles'
-	);
-
 	const wrapped = isInherited ? (
 		<Tooltip text={ __( 'Inherited from Global Styles' ) }>
 			<div className="global-styles-inheritance-tooltip-anchor">

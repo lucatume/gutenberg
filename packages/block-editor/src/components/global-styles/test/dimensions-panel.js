@@ -884,4 +884,70 @@ describe( 'DimensionsPanel — per-control placeholder pattern', () => {
 			'Medium'
 		);
 	} );
+
+	it( 'treats a local numeric zero dimension as a local override instead of inherited placeholder', () => {
+		const inheritedValue = {
+			dimensions: { minHeight: '200px' },
+		};
+		const value = {
+			dimensions: { minHeight: 0 },
+		};
+
+		render(
+			<DimensionsPanel
+				value={ value }
+				inheritedValue={ inheritedValue }
+				settings={ settingsWithDimensions }
+				onChange={ () => {} }
+				panelId="test-panel"
+			/>
+		);
+
+		const minHeightInputs = screen.getAllByLabelText( /minimum height/i );
+		const minHeightInput = minHeightInputs.find(
+			( input ) => input.tagName === 'INPUT' && input.value === '0'
+		);
+		expect( minHeightInput ).toBeDefined();
+		expect( minHeightInput ).toHaveValue( 0 );
+		expect( minHeightInput ).not.toHaveAttribute( 'placeholder' );
+		expect(
+			// eslint-disable-next-line testing-library/no-node-access
+			minHeightInput.closest( '.is-inherited-from-global-styles' )
+		).toBeNull();
+		expect(
+			// eslint-disable-next-line testing-library/no-node-access
+			minHeightInput.closest( '.has-local-override-from-global-styles' )
+		).not.toBeNull();
+	} );
+
+	it( 'treats a local zero block gap as a local value instead of inherited placeholder', () => {
+		const inheritedValue = {
+			spacing: { blockGap: '2rem' },
+		};
+		const value = {
+			spacing: { blockGap: 0 },
+		};
+
+		render(
+			<DimensionsPanel
+				value={ value }
+				inheritedValue={ inheritedValue }
+				settings={ baseSettings }
+				onChange={ () => {} }
+				panelId="test-panel"
+			/>
+		);
+
+		const gapInput = screen.getByLabelText( /block spacing/i );
+		expect( gapInput ).toHaveValue( 0 );
+		expect( gapInput ).not.toHaveAttribute( 'placeholder' );
+		expect(
+			// eslint-disable-next-line testing-library/no-node-access
+			gapInput.closest( '.is-inherited-from-global-styles' )
+		).toBeNull();
+		expect(
+			// eslint-disable-next-line testing-library/no-node-access
+			gapInput.closest( '.has-local-override-from-global-styles' )
+		).not.toBeNull();
+	} );
 } );

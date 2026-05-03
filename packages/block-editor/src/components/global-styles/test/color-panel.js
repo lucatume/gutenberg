@@ -173,6 +173,51 @@ describe( 'ColorPanel — inherited Global Styles label treatment', () => {
 			);
 			expect( overrideItems.length ).toBeGreaterThanOrEqual( 1 );
 		} );
+
+		it( 'opens a multi-tab dropdown on the tab with only an inherited value', async () => {
+			const user = userEvent.setup();
+			const inheritedValue = {
+				color: {
+					gradient:
+						'linear-gradient(135deg, rgb(255, 0, 0) 0%, rgb(0, 0, 255) 100%)',
+				},
+			};
+
+			render(
+				<ColorPanel
+					value={ {} }
+					inheritedValue={ inheritedValue }
+					settings={ {
+						...baseSettings,
+						color: {
+							...baseSettings.color,
+							gradients: {
+								default: [
+									{
+										name: 'Red to blue',
+										slug: 'red-to-blue',
+										gradient:
+											'linear-gradient(135deg, rgb(255, 0, 0) 0%, rgb(0, 0, 255) 100%)',
+									},
+								],
+							},
+							defaultGradients: true,
+						},
+					} }
+					onChange={ () => {} }
+					panelId="test-panel"
+				/>
+			);
+
+			const trigger = screen.getByRole( 'button', {
+				name: /background/i,
+			} );
+			await user.click( trigger );
+
+			expect(
+				screen.getByRole( 'tab', { selected: true } )
+			).toHaveTextContent( 'Gradient' );
+		} );
 	} );
 
 	describe( 'Link color', () => {

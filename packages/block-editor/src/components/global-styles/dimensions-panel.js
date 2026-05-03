@@ -138,9 +138,15 @@ function filterValuesBySides( values, sides ) {
 	return filteredValues;
 }
 
+const EMPTY_VALUES = [ undefined, null, '' ];
+
+function hasValue( value ) {
+	return ! EMPTY_VALUES.includes( value );
+}
+
 function splitStyleValue( value ) {
 	// Check for shorthand value (a string value).
-	if ( value && typeof value === 'string' ) {
+	if ( hasValue( value ) && typeof value === 'string' ) {
 		// Convert to value for individual sides for BoxControl.
 		return {
 			top: value,
@@ -167,7 +173,7 @@ function splitStyleValue( value ) {
  * @return {string|undefined} The common value, or undefined.
  */
 function getCommonSidesValue( sidesValue ) {
-	if ( ! sidesValue ) {
+	if ( ! hasValue( sidesValue ) ) {
 		return undefined;
 	}
 	if ( typeof sidesValue === 'string' ) {
@@ -178,9 +184,7 @@ function getCommonSidesValue( sidesValue ) {
 	}
 	const sideKeys = [ 'top', 'right', 'bottom', 'left' ];
 	const values = sideKeys.map( ( k ) => sidesValue[ k ] );
-	const allDefined = values.every(
-		( v ) => v !== undefined && v !== null && v !== ''
-	);
+	const allDefined = values.every( hasValue );
 	if ( ! allDefined ) {
 		return undefined;
 	}
@@ -189,7 +193,7 @@ function getCommonSidesValue( sidesValue ) {
 }
 
 function splitGapValue( value, isAxialGap ) {
-	if ( ! value ) {
+	if ( ! hasValue( value ) ) {
 		return value;
 	}
 
@@ -345,20 +349,19 @@ export default function DimensionsPanel( {
 		inheritedValue?.layout?.contentSize
 	);
 	const isContentSizePlaceholder =
-		! value?.layout?.contentSize &&
-		inheritedContentSizeValue !== null &&
-		inheritedContentSizeValue !== undefined &&
-		inheritedContentSizeValue !== '';
+		! hasValue( value?.layout?.contentSize ) &&
+		hasValue( inheritedContentSizeValue );
 	const setContentSizeValue = ( newValue ) => {
 		onChange(
 			setImmutably(
 				value,
 				[ 'layout', 'contentSize' ],
-				newValue || undefined
+				hasValue( newValue ) ? newValue : undefined
 			)
 		);
 	};
-	const hasUserSetContentSizeValue = () => !! value?.layout?.contentSize;
+	const hasUserSetContentSizeValue = () =>
+		hasValue( value?.layout?.contentSize );
 	const resetContentSizeValue = () => setContentSizeValue( undefined );
 
 	// Wide Width
@@ -369,20 +372,18 @@ export default function DimensionsPanel( {
 		inheritedValue?.layout?.wideSize
 	);
 	const isWideSizePlaceholder =
-		! value?.layout?.wideSize &&
-		inheritedWideSizeValue !== null &&
-		inheritedWideSizeValue !== undefined &&
-		inheritedWideSizeValue !== '';
+		! hasValue( value?.layout?.wideSize ) &&
+		hasValue( inheritedWideSizeValue );
 	const setWideSizeValue = ( newValue ) => {
 		onChange(
 			setImmutably(
 				value,
 				[ 'layout', 'wideSize' ],
-				newValue || undefined
+				hasValue( newValue ) ? newValue : undefined
 			)
 		);
 	};
-	const hasUserSetWideSizeValue = () => !! value?.layout?.wideSize;
+	const hasUserSetWideSizeValue = () => hasValue( value?.layout?.wideSize );
 	const resetWideSizeValue = () => setWideSizeValue( undefined );
 
 	// Padding
@@ -398,14 +399,15 @@ export default function DimensionsPanel( {
 	// Merged local-then-inherited values feed SpacingSizesControl's
 	// `values` because the preset slider has no placeholder slot — the
 	// active chip itself is the at-rest cue.
-	const paddingValues = value?.spacing?.padding
+	const paddingValues = hasValue( value?.spacing?.padding )
 		? localPaddingValues
 		: inheritedPaddingValues;
 	const inheritedPaddingPlaceholder = getCommonSidesValue(
 		inheritedPaddingValues
 	);
 	const isPaddingPlaceholder =
-		! value?.spacing?.padding && inheritedPaddingPlaceholder !== undefined;
+		! hasValue( value?.spacing?.padding ) &&
+		inheritedPaddingPlaceholder !== undefined;
 	const paddingSides = Array.isArray( settings?.spacing?.padding )
 		? settings?.spacing?.padding
 		: settings?.spacing?.padding?.sides;
@@ -417,7 +419,7 @@ export default function DimensionsPanel( {
 		onChange( setImmutably( value, [ 'spacing', 'padding' ], padding ) );
 	};
 	const hasPaddingValue = () =>
-		!! value?.spacing?.padding &&
+		hasValue( value?.spacing?.padding ) &&
 		Object.keys( value?.spacing?.padding ).length;
 	const resetPaddingValue = () => setPaddingValues( undefined );
 	const onMouseOverPadding = () => onVisualize( 'padding' );
@@ -430,14 +432,15 @@ export default function DimensionsPanel( {
 	const localMarginValues = splitStyleValue(
 		decodeValue( value?.spacing?.margin )
 	);
-	const marginValues = value?.spacing?.margin
+	const marginValues = hasValue( value?.spacing?.margin )
 		? localMarginValues
 		: inheritedMarginValues;
 	const inheritedMarginPlaceholder = getCommonSidesValue(
 		inheritedMarginValues
 	);
 	const isMarginPlaceholder =
-		! value?.spacing?.margin && inheritedMarginPlaceholder !== undefined;
+		! hasValue( value?.spacing?.margin ) &&
+		inheritedMarginPlaceholder !== undefined;
 	const marginSides = Array.isArray( settings?.spacing?.margin )
 		? settings?.spacing?.margin
 		: settings?.spacing?.margin?.sides;
@@ -449,7 +452,7 @@ export default function DimensionsPanel( {
 		onChange( setImmutably( value, [ 'spacing', 'margin' ], margin ) );
 	};
 	const hasMarginValue = () =>
-		!! value?.spacing?.margin &&
+		hasValue( value?.spacing?.margin ) &&
 		Object.keys( value?.spacing?.margin ).length;
 	const resetMarginValue = () => setMarginValues( undefined );
 	const onMouseOverMargin = () => onVisualize( 'margin' );
@@ -466,19 +469,16 @@ export default function DimensionsPanel( {
 	// Merge local-then-inherited so SpacingSizesControl's chip slider and
 	// the axial-gap BoxControl reflect the local value when set and fall
 	// back to the inherited value at rest.
-	const gapRawForDisplay =
-		value?.spacing?.blockGap !== undefined &&
-		value?.spacing?.blockGap !== null
-			? localGapRaw
-			: inheritedGapRaw;
+	const gapRawForDisplay = hasValue( value?.spacing?.blockGap )
+		? localGapRaw
+		: inheritedGapRaw;
 	const gapValues = splitGapValue( gapRawForDisplay, isAxialGap );
 	// Placeholder state for the single-input (non-axial, non-preset) blockGap
 	// path. The axial / preset paths render compound or chip controls without
 	// a native placeholder slot — the displayed `values` themselves are the
 	// at-rest cue for those.
 	const isGapPlaceholder =
-		( value?.spacing?.blockGap === undefined ||
-			value?.spacing?.blockGap === null ) &&
+		! hasValue( value?.spacing?.blockGap ) &&
 		typeof inheritedGapRaw === 'string' &&
 		inheritedGapRaw !== '';
 	const setGapValue = ( newGapValue ) => {
@@ -487,7 +487,7 @@ export default function DimensionsPanel( {
 		);
 	};
 	const setGapValues = ( nextBoxGapValue ) => {
-		if ( ! nextBoxGapValue ) {
+		if ( ! hasValue( nextBoxGapValue ) ) {
 			setGapValue( null );
 		}
 		// If axial gap is not enabled, treat the 'top' value as the shorthand gap value.
@@ -501,7 +501,7 @@ export default function DimensionsPanel( {
 		}
 	};
 	const resetGapValue = () => setGapValue( undefined );
-	const hasGapValue = () => !! value?.spacing?.blockGap;
+	const hasGapValue = () => hasValue( value?.spacing?.blockGap );
 
 	// Min Height
 	const showMinHeightControl = hasMinHeight( settings );
@@ -510,10 +510,8 @@ export default function DimensionsPanel( {
 		inheritedValue?.dimensions?.minHeight
 	);
 	const isMinHeightPlaceholder =
-		! value?.dimensions?.minHeight &&
-		inheritedMinHeightValue !== null &&
-		inheritedMinHeightValue !== undefined &&
-		inheritedMinHeightValue !== '';
+		! hasValue( value?.dimensions?.minHeight ) &&
+		hasValue( inheritedMinHeightValue );
 	const setMinHeightValue = ( newValue ) => {
 		const tempValue = setImmutably(
 			value,
@@ -532,7 +530,7 @@ export default function DimensionsPanel( {
 	const resetMinHeightValue = () => {
 		setMinHeightValue( undefined );
 	};
-	const hasMinHeightValue = () => !! value?.dimensions?.minHeight;
+	const hasMinHeightValue = () => hasValue( value?.dimensions?.minHeight );
 
 	// Height
 	const showHeightControl = hasHeight( settings );
@@ -541,10 +539,8 @@ export default function DimensionsPanel( {
 		inheritedValue?.dimensions?.height
 	);
 	const isHeightPlaceholder =
-		! value?.dimensions?.height &&
-		inheritedHeightValue !== null &&
-		inheritedHeightValue !== undefined &&
-		inheritedHeightValue !== '';
+		! hasValue( value?.dimensions?.height ) &&
+		hasValue( inheritedHeightValue );
 	const setHeightValue = ( newValue ) => {
 		const tempValue = setImmutably(
 			value,
@@ -563,7 +559,7 @@ export default function DimensionsPanel( {
 	const resetHeightValue = () => {
 		setHeightValue( undefined );
 	};
-	const hasHeightValue = () => !! value?.dimensions?.height;
+	const hasHeightValue = () => hasValue( value?.dimensions?.height );
 
 	// Min Width
 	const showMinWidthControl = hasMinWidth( settings );
@@ -572,10 +568,8 @@ export default function DimensionsPanel( {
 		inheritedValue?.dimensions?.minWidth
 	);
 	const isMinWidthPlaceholder =
-		! value?.dimensions?.minWidth &&
-		inheritedMinWidthValue !== null &&
-		inheritedMinWidthValue !== undefined &&
-		inheritedMinWidthValue !== '';
+		! hasValue( value?.dimensions?.minWidth ) &&
+		hasValue( inheritedMinWidthValue );
 	const setMinWidthValue = ( newValue ) => {
 		onChange(
 			setImmutably( value, [ 'dimensions', 'minWidth' ], newValue )
@@ -584,7 +578,7 @@ export default function DimensionsPanel( {
 	const resetMinWidthValue = () => {
 		setMinWidthValue( undefined );
 	};
-	const hasMinWidthValue = () => !! value?.dimensions?.minWidth;
+	const hasMinWidthValue = () => hasValue( value?.dimensions?.minWidth );
 
 	// Width
 	const showWidthControl = hasWidth( settings );
@@ -593,17 +587,15 @@ export default function DimensionsPanel( {
 		inheritedValue?.dimensions?.width
 	);
 	const isWidthPlaceholder =
-		! value?.dimensions?.width &&
-		inheritedWidthValue !== null &&
-		inheritedWidthValue !== undefined &&
-		inheritedWidthValue !== '';
+		! hasValue( value?.dimensions?.width ) &&
+		hasValue( inheritedWidthValue );
 	const setWidthValue = ( newValue ) => {
 		onChange( setImmutably( value, [ 'dimensions', 'width' ], newValue ) );
 	};
 	const resetWidthValue = () => {
 		setWidthValue( undefined );
 	};
-	const hasWidthValue = () => !! value?.dimensions?.width;
+	const hasWidthValue = () => hasValue( value?.dimensions?.width );
 
 	// Aspect Ratio
 	const showAspectRatioControl = hasAspectRatio( settings );
@@ -613,10 +605,8 @@ export default function DimensionsPanel( {
 	);
 	const aspectRatioValue = localAspectRatioValue ?? inheritedAspectRatioValue;
 	const isAspectRatioPlaceholder =
-		! value?.dimensions?.aspectRatio &&
-		inheritedAspectRatioValue !== null &&
-		inheritedAspectRatioValue !== undefined &&
-		inheritedAspectRatioValue !== '';
+		! hasValue( value?.dimensions?.aspectRatio ) &&
+		hasValue( inheritedAspectRatioValue );
 	const setAspectRatioValue = ( newValue ) => {
 		const tempValue = setImmutably(
 			value,
@@ -628,7 +618,8 @@ export default function DimensionsPanel( {
 			setImmutably( tempValue, [ 'dimensions', 'minHeight' ], undefined )
 		);
 	};
-	const hasAspectRatioValue = () => !! value?.dimensions?.aspectRatio;
+	const hasAspectRatioValue = () =>
+		hasValue( value?.dimensions?.aspectRatio );
 
 	// Child Layout. There is no Global Styles inheritance model for the
 	// child-layout sub-keys (`selfStretch`, `flexSize`, `columnStart`,
@@ -682,7 +673,7 @@ export default function DimensionsPanel( {
 						__next40pxDefaultSize
 						label={ __( 'Content width' ) }
 						labelPosition="top"
-						value={ localContentSizeValue || '' }
+						value={ localContentSizeValue ?? '' }
 						placeholder={
 							isContentSizePlaceholder
 								? inheritedContentSizeValue
@@ -719,7 +710,7 @@ export default function DimensionsPanel( {
 						__next40pxDefaultSize
 						label={ __( 'Wide width' ) }
 						labelPosition="top"
-						value={ localWideSizeValue || '' }
+						value={ localWideSizeValue ?? '' }
 						placeholder={
 							isWideSizePlaceholder
 								? inheritedWideSizeValue
@@ -891,11 +882,7 @@ export default function DimensionsPanel( {
 								min={ 0 }
 								onChange={ setGapValue }
 								units={ units }
-								value={
-									typeof localGapRaw === 'string'
-										? localGapRaw
-										: undefined
-								}
+								value={ localGapRaw ?? undefined }
 								placeholder={
 									isGapPlaceholder
 										? inheritedGapRaw

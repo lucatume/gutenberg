@@ -182,6 +182,12 @@ const DEFAULT_CONTROLS = {
 	textColumns: true,
 };
 
+const EMPTY_VALUES = [ undefined, null, '' ];
+
+function hasValue( value ) {
+	return ! EMPTY_VALUES.includes( value );
+}
+
 export default function TypographyPanel( {
 	as: Wrapper = TypographyToolsPanel,
 	value,
@@ -213,10 +219,8 @@ export default function TypographyPanel( {
 	const fontFamily =
 		decodeValue( value?.typography?.fontFamily ) ?? inheritedFontFamily;
 	const isFontFamilyPlaceholder =
-		! value?.typography?.fontFamily &&
-		inheritedFontFamily !== undefined &&
-		inheritedFontFamily !== null &&
-		inheritedFontFamily !== '';
+		! hasValue( value?.typography?.fontFamily ) &&
+		hasValue( inheritedFontFamily );
 	const { fontFamilies, fontFamilyFaces } = useMemo( () => {
 		return getMergedFontFamiliesAndFontFamilyFaces( settings, fontFamily );
 	}, [ settings, fontFamily ] );
@@ -225,10 +229,13 @@ export default function TypographyPanel( {
 		const slug = fontFamilies?.find(
 			( { fontFamily: f } ) => f === newValue
 		)?.slug;
+		const nextFontFamily = slug
+			? `var:preset|font-family|${ slug }`
+			: newValue;
 		let updatedValue = setImmutably(
 			value,
 			[ 'typography', 'fontFamily' ],
-			slug ? `var:preset|font-family|${ slug }` : newValue || undefined
+			hasValue( nextFontFamily ) ? nextFontFamily : undefined
 		);
 
 		// Check if current font style/weight are available in the new font family.
@@ -258,8 +265,12 @@ export default function TypographyPanel( {
 					...updatedValue,
 					typography: {
 						...updatedValue?.typography,
-						fontStyle: nearestFontStyle || undefined,
-						fontWeight: nearestFontWeight || undefined,
+						fontStyle: hasValue( nearestFontStyle )
+							? nearestFontStyle
+							: undefined,
+						fontWeight: hasValue( nearestFontWeight )
+							? nearestFontWeight
+							: undefined,
 					},
 				};
 			} else if ( fontStyle || fontWeight ) {
@@ -277,7 +288,7 @@ export default function TypographyPanel( {
 
 		onChange( updatedValue );
 	};
-	const hasFontFamily = () => !! value?.typography?.fontFamily;
+	const hasFontFamily = () => hasValue( value?.typography?.fontFamily );
 	const resetFontFamily = () => setFontFamily( undefined );
 
 	// Font Size
@@ -295,12 +306,7 @@ export default function TypographyPanel( {
 	const fontSize = decodeValue( rawFontSizeForDisplay );
 	const inheritedFontSizeDecoded = decodeValue( rawInheritedFontSize );
 	const isFontSizePlaceholder =
-		( rawLocalFontSize === undefined ||
-			rawLocalFontSize === null ||
-			rawLocalFontSize === '' ) &&
-		rawInheritedFontSize !== undefined &&
-		rawInheritedFontSize !== null &&
-		rawInheritedFontSize !== '';
+		! hasValue( rawLocalFontSize ) && hasValue( rawInheritedFontSize );
 
 	// Extract the slug from the CSS custom property if it exists.
 	const extractSlug = ( rawValue ) => {
@@ -332,7 +338,7 @@ export default function TypographyPanel( {
 			setImmutably(
 				value,
 				[ 'typography', 'fontSize' ],
-				actualValue || undefined
+				hasValue( actualValue ) ? actualValue : undefined
 			)
 		);
 	};
@@ -356,7 +362,7 @@ export default function TypographyPanel( {
 		}
 		setFontSize( newValue, metadata );
 	};
-	const hasFontSize = () => !! value?.typography?.fontSize;
+	const hasFontSize = () => hasValue( value?.typography?.fontSize );
 	const resetFontSize = () => setFontSize( undefined );
 
 	// Appearance
@@ -377,14 +383,9 @@ export default function TypographyPanel( {
 	const fontWeight =
 		decodeValue( value?.typography?.fontWeight ) ?? inheritedFontWeight;
 	const isFontAppearancePlaceholder =
-		! value?.typography?.fontStyle &&
-		! value?.typography?.fontWeight &&
-		( ( inheritedFontStyle !== undefined &&
-			inheritedFontStyle !== null &&
-			inheritedFontStyle !== '' ) ||
-			( inheritedFontWeight !== undefined &&
-				inheritedFontWeight !== null &&
-				inheritedFontWeight !== '' ) );
+		! hasValue( value?.typography?.fontStyle ) &&
+		! hasValue( value?.typography?.fontWeight ) &&
+		( hasValue( inheritedFontStyle ) || hasValue( inheritedFontWeight ) );
 	const setFontAppearance = useCallback(
 		( { fontStyle: newFontStyle, fontWeight: newFontWeight } ) => {
 			// Only update the font style and weight if they have changed.
@@ -393,8 +394,12 @@ export default function TypographyPanel( {
 					...value,
 					typography: {
 						...value?.typography,
-						fontStyle: newFontStyle || undefined,
-						fontWeight: newFontWeight || undefined,
+						fontStyle: hasValue( newFontStyle )
+							? newFontStyle
+							: undefined,
+						fontWeight: hasValue( newFontWeight )
+							? newFontWeight
+							: undefined,
 					},
 				} );
 			}
@@ -419,8 +424,12 @@ export default function TypographyPanel( {
 					...value,
 					typography: {
 						...value?.typography,
-						fontStyle: fontStyle || undefined,
-						fontWeight: fontWeight || undefined,
+						fontStyle: hasValue( fontStyle )
+							? fontStyle
+							: undefined,
+						fontWeight: hasValue( fontWeight )
+							? fontWeight
+							: undefined,
 					},
 				} );
 				return;
@@ -437,7 +446,8 @@ export default function TypographyPanel( {
 		]
 	);
 	const hasFontAppearance = () =>
-		!! value?.typography?.fontStyle || !! value?.typography?.fontWeight;
+		hasValue( value?.typography?.fontStyle ) ||
+		hasValue( value?.typography?.fontWeight );
 	const resetFontAppearance = useCallback( () => {
 		setFontAppearance( {} );
 	}, [ setFontAppearance ] );
@@ -449,20 +459,18 @@ export default function TypographyPanel( {
 		inheritedValue?.typography?.lineHeight
 	);
 	const isLineHeightPlaceholder =
-		value?.typography?.lineHeight === undefined &&
-		inheritedLineHeight !== undefined &&
-		inheritedLineHeight !== null &&
-		inheritedLineHeight !== '';
+		! hasValue( value?.typography?.lineHeight ) &&
+		hasValue( inheritedLineHeight );
 	const setLineHeight = ( newValue ) => {
 		onChange(
 			setImmutably(
 				value,
 				[ 'typography', 'lineHeight' ],
-				newValue || undefined
+				hasValue( newValue ) ? newValue : undefined
 			)
 		);
 	};
-	const hasLineHeight = () => value?.typography?.lineHeight !== undefined;
+	const hasLineHeight = () => hasValue( value?.typography?.lineHeight );
 	const resetLineHeight = () => setLineHeight( undefined );
 
 	// Letter Spacing
@@ -472,20 +480,18 @@ export default function TypographyPanel( {
 		inheritedValue?.typography?.letterSpacing
 	);
 	const isLetterSpacingPlaceholder =
-		! value?.typography?.letterSpacing &&
-		inheritedLetterSpacing !== undefined &&
-		inheritedLetterSpacing !== null &&
-		inheritedLetterSpacing !== '';
+		! hasValue( value?.typography?.letterSpacing ) &&
+		hasValue( inheritedLetterSpacing );
 	const setLetterSpacing = ( newValue ) => {
 		onChange(
 			setImmutably(
 				value,
 				[ 'typography', 'letterSpacing' ],
-				newValue || undefined
+				hasValue( newValue ) ? newValue : undefined
 			)
 		);
 	};
-	const hasLetterSpacing = () => !! value?.typography?.letterSpacing;
+	const hasLetterSpacing = () => hasValue( value?.typography?.letterSpacing );
 	const resetLetterSpacing = () => setLetterSpacing( undefined );
 
 	// Text Indent
@@ -495,10 +501,8 @@ export default function TypographyPanel( {
 		inheritedValue?.typography?.textIndent
 	);
 	const isTextIndentPlaceholder =
-		! value?.typography?.textIndent &&
-		inheritedTextIndent !== undefined &&
-		inheritedTextIndent !== null &&
-		inheritedTextIndent !== '';
+		! hasValue( value?.typography?.textIndent ) &&
+		hasValue( inheritedTextIndent );
 
 	// Get the setting value - can be 'subsequent' (default), 'all', or false.
 	// The setting determines which CSS selector is used for the text-indent style.
@@ -510,7 +514,7 @@ export default function TypographyPanel( {
 			setImmutably(
 				value,
 				[ 'typography', 'textIndent' ],
-				newValue || undefined
+				hasValue( newValue ) ? newValue : undefined
 			)
 		);
 	};
@@ -528,7 +532,7 @@ export default function TypographyPanel( {
 		} );
 	};
 
-	const hasTextIndent = () => !! value?.typography?.textIndent;
+	const hasTextIndent = () => hasValue( value?.typography?.textIndent );
 	const resetTextIndent = () => {
 		onChange(
 			setImmutably( value, [ 'typography', 'textIndent' ], undefined )
@@ -545,20 +549,18 @@ export default function TypographyPanel( {
 		inheritedValue?.typography?.textColumns
 	);
 	const isTextColumnsPlaceholder =
-		! value?.typography?.textColumns &&
-		inheritedTextColumns !== undefined &&
-		inheritedTextColumns !== null &&
-		inheritedTextColumns !== '';
+		! hasValue( value?.typography?.textColumns ) &&
+		hasValue( inheritedTextColumns );
 	const setTextColumns = ( newValue ) => {
 		onChange(
 			setImmutably(
 				value,
 				[ 'typography', 'textColumns' ],
-				newValue || undefined
+				hasValue( newValue ) ? newValue : undefined
 			)
 		);
 	};
-	const hasTextColumns = () => !! value?.typography?.textColumns;
+	const hasTextColumns = () => hasValue( value?.typography?.textColumns );
 	const resetTextColumns = () => setTextColumns( undefined );
 
 	// Text Transform
@@ -570,16 +572,14 @@ export default function TypographyPanel( {
 		decodeValue( value?.typography?.textTransform ) ??
 		inheritedTextTransform;
 	const isTextTransformPlaceholder =
-		! value?.typography?.textTransform &&
-		inheritedTextTransform !== undefined &&
-		inheritedTextTransform !== null &&
-		inheritedTextTransform !== '';
+		! hasValue( value?.typography?.textTransform ) &&
+		hasValue( inheritedTextTransform );
 	const setTextTransform = ( newValue ) => {
 		onChange(
 			setImmutably(
 				value,
 				[ 'typography', 'textTransform' ],
-				newValue || undefined
+				hasValue( newValue ) ? newValue : undefined
 			)
 		);
 	};
@@ -598,7 +598,7 @@ export default function TypographyPanel( {
 		}
 		setTextTransform( newValue );
 	};
-	const hasTextTransform = () => !! value?.typography?.textTransform;
+	const hasTextTransform = () => hasValue( value?.typography?.textTransform );
 	const resetTextTransform = () => setTextTransform( undefined );
 
 	// Text Decoration
@@ -610,16 +610,14 @@ export default function TypographyPanel( {
 		decodeValue( value?.typography?.textDecoration ) ??
 		inheritedTextDecoration;
 	const isTextDecorationPlaceholder =
-		! value?.typography?.textDecoration &&
-		inheritedTextDecoration !== undefined &&
-		inheritedTextDecoration !== null &&
-		inheritedTextDecoration !== '';
+		! hasValue( value?.typography?.textDecoration ) &&
+		hasValue( inheritedTextDecoration );
 	const setTextDecoration = ( newValue ) => {
 		onChange(
 			setImmutably(
 				value,
 				[ 'typography', 'textDecoration' ],
-				newValue || undefined
+				hasValue( newValue ) ? newValue : undefined
 			)
 		);
 	};
@@ -630,7 +628,8 @@ export default function TypographyPanel( {
 		}
 		setTextDecoration( newValue );
 	};
-	const hasTextDecoration = () => !! value?.typography?.textDecoration;
+	const hasTextDecoration = () =>
+		hasValue( value?.typography?.textDecoration );
 	const resetTextDecoration = () => setTextDecoration( undefined );
 
 	// Text Orientation
@@ -641,16 +640,14 @@ export default function TypographyPanel( {
 	const writingMode =
 		decodeValue( value?.typography?.writingMode ) ?? inheritedWritingMode;
 	const isWritingModePlaceholder =
-		! value?.typography?.writingMode &&
-		inheritedWritingMode !== undefined &&
-		inheritedWritingMode !== null &&
-		inheritedWritingMode !== '';
+		! hasValue( value?.typography?.writingMode ) &&
+		hasValue( inheritedWritingMode );
 	const setWritingMode = ( newValue ) => {
 		onChange(
 			setImmutably(
 				value,
 				[ 'typography', 'writingMode' ],
-				newValue || undefined
+				hasValue( newValue ) ? newValue : undefined
 			)
 		);
 	};
@@ -661,7 +658,7 @@ export default function TypographyPanel( {
 		}
 		setWritingMode( newValue );
 	};
-	const hasWritingMode = () => !! value?.typography?.writingMode;
+	const hasWritingMode = () => hasValue( value?.typography?.writingMode );
 	const resetWritingMode = () => setWritingMode( undefined );
 
 	// Text Alignment
@@ -673,16 +670,14 @@ export default function TypographyPanel( {
 	const textAlign =
 		decodeValue( value?.typography?.textAlign ) ?? inheritedTextAlign;
 	const isTextAlignPlaceholder =
-		! value?.typography?.textAlign &&
-		inheritedTextAlign !== undefined &&
-		inheritedTextAlign !== null &&
-		inheritedTextAlign !== '';
+		! hasValue( value?.typography?.textAlign ) &&
+		hasValue( inheritedTextAlign );
 	const setTextAlign = ( newValue ) => {
 		onChange(
 			setImmutably(
 				value,
 				[ 'typography', 'textAlign' ],
-				newValue || undefined
+				hasValue( newValue ) ? newValue : undefined
 			)
 		);
 	};
@@ -693,7 +688,7 @@ export default function TypographyPanel( {
 		}
 		setTextAlign( newValue );
 	};
-	const hasTextAlign = () => !! value?.typography?.textAlign;
+	const hasTextAlign = () => hasValue( value?.typography?.textAlign );
 	const resetTextAlign = () => setTextAlign( undefined );
 
 	const resetAllFilter = useCallback( ( previousValue ) => {
