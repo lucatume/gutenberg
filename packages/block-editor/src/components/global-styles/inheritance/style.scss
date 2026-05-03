@@ -8,14 +8,22 @@
 .is-inherited-from-global-styles {
 	.components-base-control__label,
 	.block-editor-panel-color-gradient-settings__color-name {
+		position: relative;
 		color: var(--wp-block-synced-color);
 	}
 }
 
-// The Tooltip anchor wrapper. Default block flow so Ariakit has a
-// real bounding rect; otherwise transparent.
+// The tooltip target overlays the visible label text only. This keeps
+// the inherited-value tooltip scoped to labels without wrapping the
+// full control or intercepting nested control tooltips.
 .global-styles-inheritance-tooltip-anchor {
-	display: block;
+	display: inline-block;
+	position: absolute;
+	inset: 0;
+}
+
+.global-styles-inheritance-tooltip-anchor__text {
+	visibility: hidden;
 }
 
 // Local-override interactive dot menu — portaled into the label DOM

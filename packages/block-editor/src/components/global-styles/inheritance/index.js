@@ -138,9 +138,9 @@ function InheritanceDot( { onResetToInherited } ) {
 }
 
 /**
- * Helper that portals the dot menu into the panel item's visible
- * label so the dot sits inline with the label text rather than
- * floating in the panel item's box.
+ * Helper that portals inheritance UI into the panel item's visible
+ * label so the UI sits inline with the label text rather than affecting
+ * the panel item's control layout.
  *
  * Mounts a hidden sentinel `<span>` whose `parentElement` is the
  * `ToolsPanelItem` content wrapper. From the sentinel we run a
@@ -154,10 +154,12 @@ function InheritanceDot( { onResetToInherited } ) {
  * @param {Object}   props
  * @param {Function} props.onResetToInherited Reset handler forwarded to the
  *                                            dot menu.
+ * @param {boolean}  props.isInherited        Whether to attach the inherited
+ *                                            tooltip to the label.
  *
- * @return {Element} The sentinel span plus a portaled dot menu.
+ * @return {Element} The sentinel span plus portaled inheritance UI.
  */
-function PortaledInheritanceDot( { onResetToInherited } ) {
+function PortaledInheritanceControls( { onResetToInherited, isInherited } ) {
 	const sentinelRef = useRef( null );
 	const [ labelEl, setLabelEl ] = useState( null );
 
@@ -200,9 +202,24 @@ function PortaledInheritanceDot( { onResetToInherited } ) {
 			/>
 			{ labelEl &&
 				createPortal(
-					<InheritanceDot
-						onResetToInherited={ onResetToInherited }
-					/>,
+					<>
+						{ isInherited && (
+							<Tooltip
+								text={ __( 'Inherited from Global Styles' ) }
+							>
+								<span className="global-styles-inheritance-tooltip-anchor">
+									<span className="global-styles-inheritance-tooltip-anchor__text">
+										{ labelEl.textContent }
+									</span>
+								</span>
+							</Tooltip>
+						) }
+						{ onResetToInherited && (
+							<InheritanceDot
+								onResetToInherited={ onResetToInherited }
+							/>
+						) }
+					</>,
 					labelEl
 				) }
 		</>
@@ -244,16 +261,6 @@ export function InheritanceToolsPanelItem( {
 	children,
 	...rest
 } ) {
-	const wrapped = isInherited ? (
-		<Tooltip text={ __( 'Inherited from Global Styles' ) }>
-			<div className="global-styles-inheritance-tooltip-anchor">
-				{ children }
-			</div>
-		</Tooltip>
-	) : (
-		children
-	);
-
 	return (
 		<ToolsPanelItem
 			className={ className }
@@ -261,9 +268,14 @@ export function InheritanceToolsPanelItem( {
 			onDeselect={ onDeselect }
 			{ ...rest }
 		>
-			{ wrapped }
-			{ hasLocalOverride && (
-				<PortaledInheritanceDot onResetToInherited={ onDeselect } />
+			{ children }
+			{ ( isInherited || hasLocalOverride ) && (
+				<PortaledInheritanceControls
+					isInherited={ isInherited }
+					onResetToInherited={
+						hasLocalOverride ? onDeselect : undefined
+					}
+				/>
 			) }
 		</ToolsPanelItem>
 	);

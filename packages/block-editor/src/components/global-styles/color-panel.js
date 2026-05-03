@@ -243,7 +243,7 @@ export function ColorPanelDropdown( {
 	const inheritanceProps = ( isInherited, hasLocalOverride, classes ) =>
 		showInheritanceLabelIndicators
 			? getInheritanceProps( isInherited, hasLocalOverride, classes )
-			: {};
+			: { className: classes };
 	return (
 		<InheritanceToolsPanelItem
 			{ ...inheritanceProps(
