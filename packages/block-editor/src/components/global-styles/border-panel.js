@@ -173,8 +173,11 @@ export default function BorderPanel( {
 	const showBorderStyle = useHasBorderStyleControl( settings );
 	const showBorderWidth = useHasBorderWidthControl( settings );
 
-	// Border radius. Input archetype: `value` is local-only, and `placeholder`
-	// carries decoded inherited values for empty inputs.
+	// Border radius. Display inherited values through the control's `values`
+	// prop when local values are empty so UnitControl can parse the numeric
+	// quantity and selected unit normally (e.g. `2.5em` -> `2.5` + `em`).
+	// `hasBorderRadius` remains local-only, so displaying the inherited value
+	// does not mark the ToolsPanel item as customised or commit on mount.
 	const showBorderRadius = useHasBorderRadiusControl( settings );
 	const localBorderRadius = useMemo( () => {
 		if ( typeof value?.border?.radius !== 'object' ) {
@@ -211,21 +214,24 @@ export default function BorderPanel( {
 		}
 		return !! borderValues;
 	};
-	const isBorderRadiusPlaceholder = ! hasBorderRadius();
-	// Build an object placeholder so unlinked-mode shows per-corner inherited
+	const isBorderRadiusPlaceholder =
+		! hasBorderRadius() &&
+		inheritedBorderRadius !== undefined &&
+		inheritedBorderRadius !== '';
+	// Build an object value so unlinked-mode shows per-corner inherited
 	// values. The control accepts either a string or an object; passing the
 	// object form is correct in both modes (the control collapses to the
 	// `all`/first corner in linked mode).
-	const borderRadiusPlaceholder = useMemo( () => {
+	const borderRadius = useMemo( () => {
 		if ( ! isBorderRadiusPlaceholder ) {
-			return undefined;
+			return localBorderRadius;
 		}
 		if ( typeof inheritedBorderRadius === 'string' ) {
 			return inheritedBorderRadius;
 		}
 		const obj = inheritedBorderRadius;
 		if ( ! obj ) {
-			return undefined;
+			return localBorderRadius;
 		}
 		const all =
 			obj.topLeft &&
@@ -235,7 +241,11 @@ export default function BorderPanel( {
 				? obj.topLeft
 				: undefined;
 		return { all, ...obj };
-	}, [ isBorderRadiusPlaceholder, inheritedBorderRadius ] );
+	}, [
+		isBorderRadiusPlaceholder,
+		localBorderRadius,
+		inheritedBorderRadius,
+	] );
 	const hasShadowControl = useHasShadowControl( settings );
 
 	// Shadow. At rest, the popover toggle button uses the placeholder
@@ -407,8 +417,7 @@ export default function BorderPanel( {
 			{ showBorderRadius && (
 				<InheritanceToolsPanelItem
 					{ ...inheritanceProps(
-						isBorderRadiusPlaceholder &&
-							borderRadiusPlaceholder !== undefined,
+						isBorderRadiusPlaceholder,
 						hasBorderRadius() && inheritedBorderRadius !== undefined
 					) }
 					hasValue={ hasBorderRadius }
@@ -418,9 +427,8 @@ export default function BorderPanel( {
 					panelId={ panelId }
 				>
 					<BorderRadiusControl
-						placeholder={ borderRadiusPlaceholder }
 						presets={ settings?.border?.radiusSizes }
-						values={ localBorderRadius }
+						values={ borderRadius }
 						onChange={ ( newValue ) => {
 							setBorderRadius( newValue || undefined );
 						} }

@@ -18,8 +18,9 @@ import BorderPanel from '../border-panel';
  * for inheritance state.
  *
  * For the input archetype (`BorderRadiusControl`) the inherited value
- * is forwarded as a `placeholder=` so an empty input still renders the
- * inherited number(s) at-rest.
+ * is forwarded as the displayed `values=` while local values are unset, so
+ * the underlying UnitControl can parse the quantity and unit normally without
+ * committing the inherited value on mount.
  */
 
 const settingsAll = {
@@ -50,7 +51,7 @@ const settingsAll = {
 
 describe( 'BorderPanel — inherited Global Styles label treatment', () => {
 	describe( 'Border radius (input archetype)', () => {
-		it( 'renders an inherited string radius as placeholder when local is empty', () => {
+		it( 'renders an inherited string radius as the displayed value when local is empty', () => {
 			const inheritedValue = { border: { radius: '8px' } };
 
 			render(
@@ -66,12 +67,35 @@ describe( 'BorderPanel — inherited Global Styles label treatment', () => {
 			const radiusInput = screen.getByRole( 'spinbutton', {
 				name: /border radius/i,
 			} );
-			expect( radiusInput ).toHaveValue( null );
-			expect( radiusInput ).toHaveAttribute( 'placeholder', '8px' );
+			expect( radiusInput ).toHaveValue( 8 );
+			expect( radiusInput ).not.toHaveAttribute( 'placeholder' );
 			expect(
 				// eslint-disable-next-line testing-library/no-node-access
 				radiusInput.closest( '.is-inherited-from-global-styles' )
 			).not.toBeNull();
+		} );
+
+		it( 'uses the inherited radius unit as the selected unit when local is empty', () => {
+			const inheritedValue = { border: { radius: '2.5em' } };
+
+			render(
+				<BorderPanel
+					value={ {} }
+					inheritedValue={ inheritedValue }
+					settings={ settingsAll }
+					onChange={ () => {} }
+					panelId="test-panel"
+				/>
+			);
+
+			const radiusInput = screen.getByRole( 'spinbutton', {
+				name: /border radius/i,
+			} );
+			expect( radiusInput ).toHaveValue( 2.5 );
+			const unitControls = screen.getAllByRole( 'combobox', {
+				name: /select unit/i,
+			} );
+			expect( unitControls[ 1 ] ).toHaveValue( 'em' );
 		} );
 
 		it( 'renders a locally-set radius as the value with no placeholder', () => {
