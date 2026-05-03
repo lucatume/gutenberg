@@ -38,7 +38,7 @@ import { RectangleStencil } from './stencils/rectangle-stencil';
 import { DimmingOverlay } from './overlays/dimming-overlay';
 import { GridOverlay } from './overlays/grid-overlay';
 import { ViewportProvider, useViewport } from './viewport-provider';
-import { useOptionalSetCropperGeometry } from './cropper-provider';
+import { useOptionalSetCropperLayoutGeometry } from './cropper-provider';
 import './cropper.scss';
 
 /** Threshold for comparing normalized crop rect values. */
@@ -213,7 +213,7 @@ function CropperInner(
 		setViewportPan,
 		resetViewport,
 	} = useViewport();
-	const setCropperGeometry = useOptionalSetCropperGeometry();
+	const setCropperLayoutGeometry = useOptionalSetCropperLayoutGeometry();
 	// Canvas measurement via ResizeObserver. The canvas is the inner
 	// positioning context for image/stencil/handles — inset from the root
 	// by the handle gutter, so crop math operates on the reduced box.
@@ -332,7 +332,7 @@ function CropperInner(
 			visualSize,
 			cropBounds,
 		};
-		setCropperGeometry( ( current ) =>
+		setCropperLayoutGeometry( ( current ) =>
 			areLayoutGeometriesEqual( current, nextGeometry )
 				? current
 				: nextGeometry
@@ -342,14 +342,14 @@ function CropperInner(
 		elementSize,
 		visualSize,
 		cropBounds,
-		setCropperGeometry,
+		setCropperLayoutGeometry,
 	] );
 
 	useLayoutEffect( () => {
 		return () => {
-			setCropperGeometry( null );
+			setCropperLayoutGeometry( null );
 		};
-	}, [ setCropperGeometry ] );
+	}, [ setCropperLayoutGeometry ] );
 
 	// Use the interaction hook for mouse, touch, and keyboard events.
 	const {
