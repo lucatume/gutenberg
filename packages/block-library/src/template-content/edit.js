@@ -6,17 +6,36 @@ import {
 	useBlockProps,
 	useInnerBlocksProps,
 	BlockControls,
+	InspectorControls,
 	store as blockEditorStore,
+	__experimentalUseBlockPreview as useBlockPreview,
 } from '@wordpress/block-editor';
-import { useEntityBlockEditor } from '@wordpress/core-data';
+import {
+	useEntityBlockEditor,
+	store as coreStore,
+} from '@wordpress/core-data';
+import { parse } from '@wordpress/blocks';
 import { useSelect, useRegistry } from '@wordpress/data';
-import { useLayoutEffect, useMemo } from '@wordpress/element';
-import { Placeholder, Spinner, ToolbarButton } from '@wordpress/components';
+import { useLayoutEffect, useMemo, useState } from '@wordpress/element';
+import {
+	Placeholder,
+	Spinner,
+	ToolbarButton,
+	PanelBody,
+	SelectControl,
+} from '@wordpress/components';
 
 /**
  * Internal dependencies
  */
 import icon from './icon';
+
+/**
+ * Hierarchy used to find a default preview template when the user is editing
+ * `root.html` directly and hasn't picked one explicitly. Walks the same
+ * precedence WordPress uses to resolve the home page on the frontend.
+ */
+const HOMEPAGE_FALLBACKS = [ 'front-page', 'home', 'index' ];
 
 /**
  * Stabilises the array reference returned from selectors so it only changes
@@ -191,21 +210,180 @@ function WrapModeEdit( { innerTemplateId, blockProps, clientId } ) {
  * navigate to focus mode for the previewed template.
  */
 function PreviewModeEdit( { blockProps } ) {
-	// DIAGNOSTIC: stripped to a plain placeholder. No `useEntityBlockEditor`,
-	// no `useInnerBlocksProps`, no editing-mode locking. If the
-	// "Maximum update depth" loop stops with this in place, the cause is one
-	// of those interactions; if it persists, the cause is upstream of this
-	// block.
+	// Per-session local state — the previewed template is an editor-only
+	// convenience, not data the theme author wants persisted into the saved
+	// root template's HTML.
+	const [ previewedTemplate, setPreviewedTemplate ] = useState( undefined );
+
+	const { stylesheet, themeTemplates } = useSelect( ( select ) => {
+		const { getCurrentTheme, getEntityRecords } = select( coreStore );
+		const sheet = getCurrentTheme()?.stylesheet;
+		const records = getEntityRecords( 'postType', 'wp_template', {
+			per_page: -1,
+		} );
+		return {
+			stylesheet: sheet ?? null,
+			themeTemplates:
+				records && sheet
+					? records.filter( ( t ) => t.theme === sheet )
+					: null,
+		};
+	}, [] );
+
+	// 1. The user's session-local pick, if any.
+	// 2. Else the first of `front-page` / `home` / `index` that exists.
+	const templateId = useMemo( () => {
+		if ( ! stylesheet ) {
+			return null;
+		}
+		if ( previewedTemplate ) {
+			return `${ stylesheet }//${ previewedTemplate }`;
+		}
+		if ( ! themeTemplates ) {
+			return null;
+		}
+		const availableSlugs = new Set( themeTemplates.map( ( t ) => t.slug ) );
+		for ( const slug of HOMEPAGE_FALLBACKS ) {
+			if ( availableSlugs.has( slug ) ) {
+				return `${ stylesheet }//${ slug }`;
+			}
+		}
+		return null;
+	}, [ stylesheet, previewedTemplate, themeTemplates ] );
+
+	// Read the previewed template's content directly. We deliberately avoid
+	// `useEntityBlockEditor` here because its `_id ?? providerId` fallback
+	// would resolve to the surrounding entity (the root template itself)
+	// when `templateId` is null, causing recursive preview.
+	const content = useSelect(
+		( select ) => {
+			if ( ! templateId ) {
+				return null;
+			}
+			// `getEntityRecord` triggers the resolver on first call.
+			const record = select( coreStore ).getEntityRecord(
+				'postType',
+				'wp_template',
+				templateId
+			);
+			return record?.content?.raw ?? null;
+		},
+		[ templateId ]
+	);
+
+	const previewBlocks = useMemo( () => {
+		return content ? parse( content ) : [];
+	}, [ content ] );
+
+	const blockPreviewProps = useBlockPreview( {
+		blocks: previewBlocks,
+		props: blockProps,
+	} );
+
+	const onNavigateToEntityRecord = useSelect(
+		( select ) =>
+			select( blockEditorStore ).getSettings().onNavigateToEntityRecord,
+		[]
+	);
+
+	const canEditPreviewedTemplate = useSelect(
+		( select ) =>
+			!! templateId &&
+			!! select( coreStore ).canUser( 'update', {
+				kind: 'postType',
+				name: 'wp_template',
+				id: templateId,
+			} ),
+		[ templateId ]
+	);
+
+	const previewOptions = useMemo( () => {
+		const fallbackOption = {
+			label: __( 'Default (home page)' ),
+			value: '',
+		};
+		if ( ! themeTemplates ) {
+			return [ fallbackOption ];
+		}
+		return [
+			fallbackOption,
+			...themeTemplates
+				.filter( ( t ) => t.slug !== 'root' )
+				.map( ( t ) => ( {
+					label: t.title?.rendered || t.slug,
+					value: t.slug,
+				} ) ),
+		];
+	}, [ themeTemplates ] );
+
+	const inspector = (
+		<InspectorControls>
+			<PanelBody title={ __( 'Preview' ) }>
+				<SelectControl
+					label={ __( 'Preview template' ) }
+					help={ __(
+						'Pick which template to render inside this block while editing. The frontend always uses the WordPress hierarchy regardless of this setting; the choice is not saved.'
+					) }
+					value={ previewedTemplate ?? '' }
+					options={ previewOptions }
+					onChange={ ( value ) =>
+						setPreviewedTemplate( value || undefined )
+					}
+				/>
+			</PanelBody>
+		</InspectorControls>
+	);
+
+	const editOriginalToolbar = templateId &&
+		canEditPreviewedTemplate &&
+		onNavigateToEntityRecord && (
+			<BlockControls group="other">
+				<ToolbarButton
+					onClick={ () =>
+						onNavigateToEntityRecord( {
+							postId: templateId,
+							postType: 'wp_template',
+						} )
+					}
+				>
+					{ __( 'Edit original' ) }
+				</ToolbarButton>
+			</BlockControls>
+		);
+
+	const isLoaded = templateId !== null && content !== null;
+	const hasContent = isLoaded && previewBlocks.length > 0;
+
+	if ( hasContent ) {
+		return (
+			<>
+				{ editOriginalToolbar }
+				{ inspector }
+				<div { ...blockPreviewProps } />
+			</>
+		);
+	}
+
 	return (
-		<div { ...blockProps }>
-			<Placeholder
-				icon={ icon }
-				label={ __( 'Template Content' ) }
-				instructions={ __(
-					'Diagnostic: preview-mode rendering is temporarily disabled.'
-				) }
-			/>
-		</div>
+		<>
+			{ editOriginalToolbar }
+			{ inspector }
+			<div { ...blockProps }>
+				<Placeholder
+					icon={ icon }
+					label={ __( 'Template Content' ) }
+					instructions={
+						isLoaded
+							? __(
+									'On the frontend, this block renders whichever template the WordPress hierarchy selects (front-page, archive, single, 404, etc.).'
+							  )
+							: __( 'Loading template preview…' )
+					}
+				>
+					{ ! isLoaded && <Spinner /> }
+				</Placeholder>
+			</div>
+		</>
 	);
 }
 
