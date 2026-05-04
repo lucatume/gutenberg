@@ -127,30 +127,6 @@ export default function MediaEditorToolbar( {
 			<div className="media-editor-toolbar__primary-cluster">
 				<Button
 					size="compact"
-					icon={ undo }
-					label={ __( 'Undo' ) }
-					showTooltip
-					shortcut={ displayShortcut.primary( 'z' ) }
-					disabled={ ! hasUndo }
-					accessibleWhenDisabled
-					onClick={ undoCrop }
-				/>
-				<Button
-					size="compact"
-					icon={ redo }
-					label={ __( 'Redo' ) }
-					showTooltip
-					shortcut={
-						isAppleOS()
-							? displayShortcut.primaryShift( 'z' )
-							: displayShortcut.primary( 'y' )
-					}
-					disabled={ ! hasRedo }
-					accessibleWhenDisabled
-					onClick={ redoCrop }
-				/>
-				<Button
-					size="compact"
 					icon={ flipHorizontal }
 					label={ __( 'Flip horizontal' ) }
 					showTooltip
@@ -174,6 +150,30 @@ export default function MediaEditorToolbar( {
 							vertical: ! state.flip.vertical,
 						} )
 					}
+				/>
+				<Button
+					size="compact"
+					icon={ undo }
+					label={ __( 'Undo' ) }
+					showTooltip
+					shortcut={ displayShortcut.primary( 'z' ) }
+					disabled={ ! hasUndo }
+					accessibleWhenDisabled
+					onClick={ undoCrop }
+				/>
+				<Button
+					size="compact"
+					icon={ redo }
+					label={ __( 'Redo' ) }
+					showTooltip
+					shortcut={
+						isAppleOS()
+							? displayShortcut.primaryShift( 'z' )
+							: displayShortcut.primary( 'y' )
+					}
+					disabled={ ! hasRedo }
+					accessibleWhenDisabled
+					onClick={ redoCrop }
 				/>
 				<Button
 					size="compact"
