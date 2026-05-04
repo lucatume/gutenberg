@@ -36,9 +36,23 @@ import icon from './icon';
 const HOMEPAGE_FALLBACKS = [ 'front-page', 'home', 'index' ];
 
 /**
+ * Stabilises the array reference returned from selectors so it only changes
+ * when contents change. `getBlockOrder` returns a fresh array per state
+ * mutation; without this every dispatch would invalidate dependent effects
+ * and re-trigger the dispatches that caused the state mutation, looping.
+ */
+function useStableClientIds( clientIds ) {
+	return useMemo(
+		() => clientIds,
+		// eslint-disable-next-line react-hooks/exhaustive-deps
+		[ clientIds.join( ',' ) ]
+	);
+}
+
+/**
  * Locks the canvas down to "edit only the inner template's blocks" when the
- * Site Editor is wrapping a non-root template inside `root.html`. Mirrors the
- * page-editor's `DisableNonPageContentBlocks` pattern:
+ * Site Editor is wrapping a non-root template inside `root.html`. Mirrors
+ * the page-editor's `DisableNonPageContentBlocks` pattern:
  *
  *   - Disable the entire canvas (`''` clientId).
  *   - Promote `core/template-content` itself to `'contentOnly'` so it stays
@@ -46,37 +60,69 @@ const HOMEPAGE_FALLBACKS = [ 'front-page', 'home', 'index' ];
  *   - Re-enable each direct child of `core/template-content` so the inner
  *     template's blocks can be edited normally.
  *
- * `useLayoutEffect` (vs. `useEffect`) so the dispatches fire synchronously
- * after commit but before browser paint — closes the brief one-frame window
- * where the user could otherwise click root chrome and have edits silently
- * route to the wrong entity.
+ * Three separate effects with stabilised dep arrays + read-before-dispatch
+ * guards. The `setBlockEditingMode` reducer creates a new state Map even
+ * when the value is unchanged, so unconditional dispatches would loop:
+ * dispatch → state changes → `getBlockOrder` returns new array → effect
+ * re-runs → dispatch → … . Reading `getBlockEditingMode` first and
+ * skipping no-op writes breaks that cycle at the source.
  */
 function useWrapModeLocking( clientId, childClientIds ) {
 	const registry = useRegistry();
+	const stableChildClientIds = useStableClientIds( childClientIds );
+
 	useLayoutEffect( () => {
+		const { getBlockEditingMode } = registry.select( blockEditorStore );
 		const { setBlockEditingMode, unsetBlockEditingMode } =
 			registry.dispatch( blockEditorStore );
-		registry.batch( () => {
+		if ( getBlockEditingMode( '' ) !== 'disabled' ) {
 			setBlockEditingMode( '', 'disabled' );
-			if ( clientId ) {
-				setBlockEditingMode( clientId, 'contentOnly' );
-			}
-			for ( const id of childClientIds ) {
-				setBlockEditingMode( id, 'default' );
-			}
-		} );
+		}
+		return () => {
+			unsetBlockEditingMode( '' );
+		};
+	}, [ registry ] );
+
+	useLayoutEffect( () => {
+		if ( ! clientId ) {
+			return;
+		}
+		const { getBlockEditingMode } = registry.select( blockEditorStore );
+		const { setBlockEditingMode, unsetBlockEditingMode } =
+			registry.dispatch( blockEditorStore );
+		if ( getBlockEditingMode( clientId ) !== 'contentOnly' ) {
+			setBlockEditingMode( clientId, 'contentOnly' );
+		}
+		return () => {
+			unsetBlockEditingMode( clientId );
+		};
+	}, [ clientId, registry ] );
+
+	useLayoutEffect( () => {
+		if ( stableChildClientIds.length === 0 ) {
+			return;
+		}
+		const { getBlockEditingMode } = registry.select( blockEditorStore );
+		const { setBlockEditingMode, unsetBlockEditingMode } =
+			registry.dispatch( blockEditorStore );
+		const toSet = stableChildClientIds.filter(
+			( id ) => getBlockEditingMode( id ) !== 'default'
+		);
+		if ( toSet.length > 0 ) {
+			registry.batch( () => {
+				for ( const id of toSet ) {
+					setBlockEditingMode( id, 'default' );
+				}
+			} );
+		}
 		return () => {
 			registry.batch( () => {
-				unsetBlockEditingMode( '' );
-				if ( clientId ) {
-					unsetBlockEditingMode( clientId );
-				}
-				for ( const id of childClientIds ) {
+				for ( const id of stableChildClientIds ) {
 					unsetBlockEditingMode( id );
 				}
 			} );
 		};
-	}, [ clientId, childClientIds, registry ] );
+	}, [ stableChildClientIds, registry ] );
 }
 
 /**
@@ -84,28 +130,39 @@ function useWrapModeLocking( clientId, childClientIds ) {
  * the user is editing `root.html` directly. The previewed inner template
  * appears in canvas and List View but stays non-structural; to actually
  * edit it, the author uses "Edit original" in the toolbar.
+ *
+ * Same dep stabilisation + read-before-dispatch pattern as
+ * `useWrapModeLocking` — see the comment there for why.
  */
 function usePreviewModeLocking( childClientIds ) {
 	const registry = useRegistry();
+	const stableChildClientIds = useStableClientIds( childClientIds );
+
 	useLayoutEffect( () => {
-		if ( childClientIds.length === 0 ) {
+		if ( stableChildClientIds.length === 0 ) {
 			return;
 		}
+		const { getBlockEditingMode } = registry.select( blockEditorStore );
 		const { setBlockEditingMode, unsetBlockEditingMode } =
 			registry.dispatch( blockEditorStore );
-		registry.batch( () => {
-			for ( const id of childClientIds ) {
-				setBlockEditingMode( id, 'contentOnly' );
-			}
-		} );
+		const toSet = stableChildClientIds.filter(
+			( id ) => getBlockEditingMode( id ) !== 'contentOnly'
+		);
+		if ( toSet.length > 0 ) {
+			registry.batch( () => {
+				for ( const id of toSet ) {
+					setBlockEditingMode( id, 'contentOnly' );
+				}
+			} );
+		}
 		return () => {
 			registry.batch( () => {
-				for ( const id of childClientIds ) {
+				for ( const id of stableChildClientIds ) {
 					unsetBlockEditingMode( id );
 				}
 			} );
 		};
-	}, [ childClientIds, registry ] );
+	}, [ stableChildClientIds, registry ] );
 }
 
 /**
