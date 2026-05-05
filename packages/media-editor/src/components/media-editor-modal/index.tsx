@@ -59,7 +59,11 @@ import {
 	useImageEditingSession,
 	type ImageEditingSessionImage,
 } from '../image-editing-session';
-import { useImageEditorExtensionPanels } from '../image-editor-extension-registry';
+import {
+	registerImageEditorExtensionPanel,
+	useImageEditorExtensionPanels,
+} from '../image-editor-extension-registry';
+import MediaEditorAdjustmentsPanel from '../media-editor-adjustments-panel';
 
 // Details-tab edits the modal bundles into a transformed `/edit` request.
 // Matches Core's `WP_REST_Attachments_Controller::get_edit_media_item_args`
@@ -261,6 +265,15 @@ function MediaEditorModalContent( {
 	const [ aspectRatioValue, setAspectRatioValue ] = useState( '0' );
 	const [ freeformCrop, setFreeformCrop ] = useState( true );
 
+	useEffect( () => {
+		return registerImageEditorExtensionPanel( {
+			name: 'core/adjustments',
+			title: __( 'Adjust' ),
+			order: 10,
+			component: MediaEditorAdjustmentsPanel,
+		} );
+	}, [] );
+
 	const signalPlacementControlInteraction = useCallback( () => {
 		setIsPlacementActive( true );
 		clearTimeout( placementControlTimerRef.current );
@@ -427,6 +440,13 @@ function MediaEditorModalContent( {
 		// Clear any prior failure snackbar so a successful retry doesn't
 		// leave a stale "Could not save image" hovering.
 		removeAllNotices( 'snackbar', NOTICES_CONTEXT );
+		if ( imageSession.hasPreviewOnlyEdits ) {
+			createErrorNotice( __( 'Image adjustments cannot be saved yet.' ), {
+				type: 'snackbar',
+				context: NOTICES_CONTEXT,
+			} );
+			return;
+		}
 		setIsSaving( true );
 		try {
 			let saved: Media | null | undefined;

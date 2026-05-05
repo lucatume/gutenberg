@@ -40,6 +40,7 @@ describe( 'ImageEditingSessionProvider', () => {
 		const { result } = setup();
 
 		expect( result.current.isDirty ).toBe( false );
+		expect( result.current.hasPreviewOnlyEdits ).toBe( false );
 		expect( result.current.hasUndo ).toBe( false );
 		expect( result.current.hasRedo ).toBe( false );
 		expect( result.current.sourceImage ).toBeNull();
@@ -115,6 +116,119 @@ describe( 'ImageEditingSessionProvider', () => {
 		} );
 
 		expect( result.current.isDirty ).toBe( true );
+		expect( result.current.hasPreviewOnlyEdits ).toBe( false );
+	} );
+
+	it( 'marks adjustment changes as preview-only edits', () => {
+		const { result } = setup();
+
+		act( () => {
+			result.current.setAdjustment( 'brightness', 1.25 );
+		} );
+
+		expect( result.current.adjustments.brightness ).toBe( 1.25 );
+		expect( result.current.isDirty ).toBe( true );
+		expect( result.current.hasPreviewOnlyEdits ).toBe( true );
+	} );
+
+	it( 'undoes and redoes adjustment edits through the session', () => {
+		const { result } = setup();
+
+		act( () => {
+			result.current.setAdjustment( 'contrast', 1.4 );
+		} );
+		act( () => {
+			result.current.commitHistory();
+		} );
+
+		expect( result.current.hasUndo ).toBe( true );
+
+		act( () => {
+			result.current.undo();
+		} );
+
+		expect( result.current.adjustments.contrast ).toBe( 1 );
+		expect( result.current.hasRedo ).toBe( true );
+
+		act( () => {
+			result.current.redo();
+		} );
+
+		expect( result.current.adjustments.contrast ).toBe( 1.4 );
+		expect( result.current.hasRedo ).toBe( false );
+	} );
+
+	it( 'undoes adjustment edits after earlier cropper edits', () => {
+		const { result } = setup();
+
+		act( () => {
+			result.current.cropper.setZoom( 2 );
+		} );
+		act( () => {
+			result.current.commitHistory();
+		} );
+		act( () => {
+			result.current.setAdjustment( 'brightness', 1.2 );
+		} );
+		act( () => {
+			result.current.commitHistory();
+		} );
+
+		act( () => {
+			result.current.undo();
+		} );
+
+		expect( result.current.cropper.state.zoom ).toBe( 2 );
+		expect( result.current.adjustments.brightness ).toBe( 1 );
+	} );
+
+	it( 'undoes cropper edits after earlier adjustment edits', () => {
+		const { result } = setup();
+
+		act( () => {
+			result.current.setAdjustment( 'brightness', 1.2 );
+		} );
+		act( () => {
+			result.current.commitHistory();
+		} );
+		act( () => {
+			result.current.cropper.setZoom( 2 );
+		} );
+		act( () => {
+			result.current.commitHistory();
+		} );
+
+		act( () => {
+			result.current.undo();
+		} );
+
+		expect( result.current.cropper.state.zoom ).toBe( 1 );
+		expect( result.current.adjustments.brightness ).toBe( 1.2 );
+	} );
+
+	it( 'resets adjustments when the source image changes', () => {
+		const { result } = setup();
+
+		act( () => {
+			result.current.setSourceImage( TEST_IMAGE );
+		} );
+		act( () => {
+			result.current.setAdjustment( 'saturation', 0.5 );
+		} );
+		act( () => {
+			result.current.commitHistory();
+		} );
+
+		expect( result.current.hasPreviewOnlyEdits ).toBe( true );
+		expect( result.current.hasUndo ).toBe( true );
+
+		act( () => {
+			result.current.setSourceImage( NEXT_IMAGE );
+		} );
+
+		expect( result.current.adjustments.saturation ).toBe( 1 );
+		expect( result.current.hasPreviewOnlyEdits ).toBe( false );
+		expect( result.current.hasUndo ).toBe( false );
 	} );
 
 	it( 'undoes and redoes cropper edits through the session', () => {

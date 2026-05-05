@@ -35,6 +35,8 @@ export default function MediaEditorCanvas( {
 	const { media } = useMediaEditorContext();
 	const controller = useCropper();
 	const imageSession = useImageEditingSession();
+	const { adjustments } = imageSession;
+	const adjustmentFilter = `brightness(${ adjustments.brightness }) contrast(${ adjustments.contrast }) saturate(${ adjustments.saturation }) grayscale(${ adjustments.grayscale })`;
 
 	const mediaUrl = media?.source_url;
 	const mediaType = getMediaTypeFromMimeType( media?.mime_type );
@@ -52,6 +54,7 @@ export default function MediaEditorCanvas( {
 				freeformCrop={ freeformCrop }
 				showGrid="interactive"
 				isPlacementActive={ isPlacementActive }
+				filter={ adjustmentFilter }
 				onImageLoaded={ ( size ) =>
 					imageSession.setSourceImage( {
 						src: mediaUrl,
