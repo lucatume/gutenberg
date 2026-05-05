@@ -1,0 +1,1 @@
+import{_ as e,r}from"./iframe-03ngg-oL.js";const{unlock:n}=e("I acknowledge private features are not for use in themes or plugins and doing so will break in the next version of WordPress.","@wordpress/ui");function renderPortalWithChildren(e,n,o){const s=e??n;return r.cloneElement(s,{children:o})}export{renderPortalWithChildren as r,n as u};
